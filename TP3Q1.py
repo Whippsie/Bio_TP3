@@ -1,6 +1,6 @@
 import argparse
 
-seuil = 0
+seuil = 4
 
 def buildKmer(k,input):
     kmerList=[]
@@ -16,7 +16,7 @@ def buildKmer(k,input):
             kmerList.append(temp)
 		#TODO: Changer pour pos commencement
 	    kmerPos.append(i)
-    return kmerList
+    return (kmerList, kmerPos)
 
 def makeParser():
     parser = argparse.ArgumentParser(description='TP3_Bio')
@@ -78,68 +78,90 @@ def findHSP(kmerList,seqDB, seed):
 				compteurPos += 1
 	print(hspList)
 	print(hspPos)
+	return (hspList, hspPos)
 
 
 def extendGlouton(kmerList, hspList, kmerPos, seqDB, seq, hspPos):
+	hspExtendedList = []	
 	for hsp in hspList:
-		posDB = hspList.index[hsp]
+		posDB = hspList.index(hsp)
 		posDB = hspPos[posDB]
 		maxScore = len(hsp)*5
 		currentScore = maxScore
-		currentHSP = hsp		
-		while(!bellowSeuil(maxScore, currentScore) and !isEnd()):
-			var = kmerList.index[hsp]
+		currentHSP = hsp
+		while(not bellowSeuil(maxScore, currentScore) and not isEnd(currentHSP, seq, seqDB)):
+			var = kmerList.index(hsp)
 			pos = kmerPos[var]
 			scoreLeft = 0
 			scoreRight = 0
+			
 			if pos > 0:
 				tempChar = seq[pos-1]
 				tempCharDB = seqDB[posDB-1]
 				if tempChar == tempCharDB:
 					scoreLeft = 5 + currentScore
+					leftString = seq[pos-1] + currentHSP
 				else:
 					scoreLeft = currentScore - 4
-			if pos+len(currentHSP) < len(seqDB) or pos+len(currentHSP) < len(seq):
-				tempChar = seq[pos+1]
-				tempCharDB = seqDB[posDB+1]
+					leftString = currentHSP
+			else:
+				scoreLeft = -9000
+
+			if posDB+len(currentHSP) < len(seqDB) and pos+len(currentHSP) < len(seq):
+				tempChar = seq[pos+len(currentHSP)]
+				tempCharDB = seqDB[posDB+len(currentHSP)]
+				print("temp1", tempChar, " tempsdb", tempCharDB)
 				if tempChar == tempCharDB:
+					print ("its a match")
 					scoreRight = 5 + currentScore
+					rightString = currentHSP + seq[pos+len(currentHSP)]
 				else:
 					scoreRight = currentScore - 4
-			scoreBoth = currentScore + (scoreLeft - currentScore) + (scoreRight - currentScore)
-			currentScore = max(scoreLeft, scoreRight, scoreBoth)
-			if currentScore == scoreBoth:
-				currentHSP = seq[pos-1] + currentHSP + seq[pos+1]
-			elif currentScore == scoreRight:
-				currentHSP = currentHSP + seq[pos+1]
+					rightString = currentHSP
 			else:
-				currentHSP = seq[pos-1] + currentHSP
+				scoreRight = -9000
+			
+			scoreBoth = currentScore + (scoreLeft - currentScore) + (scoreRight - currentScore)
+			bothSidesString = seq[pos-1] + currentHSP + seq[pos+len(currentHSP)]
+			currentScore = max(scoreLeft, scoreRight, scoreBoth)
+			
+			if currentScore == scoreBoth:
+				currentHSP = bothSidesString
+				pos -= 1
+				posDB -= 1
+			elif currentScore == scoreRight:
+				print("currentHSP BEFORE ELIF:", currentHSP, " posDB:", posDB, " pos:", pos) 
+				currentHSP = rightString
+				print("currentHSP IN ELIF:", currentHSP, " posDB:", posDB, " pos:", pos) 
+			else:
+				currentHSP = leftString
+				pos -= 1
+				posDB -= 1
+			
 			if currentScore > maxScore:
 				maxScore = currentScore
+		hspExtendedList.append(currentHSP)
+	print(hspExtendedList)
+	return hspExtendedList
 
-def getMax(sl,sr,sb,posDB,pos,currHSP):
-	if sl>sr:
-		if sl>sb:
-			
-			return (sl, posDB-1, pos-1)
-		else:
-			return (sb, 
-
-def isEnd():
+def isEnd(currentHSP, seq, seqDB):
+	if len(currentHSP) == len(seq) or len(currentHSP) == len(seqDB):
+		return True
 	return False
 
-def bellowSeuil(maxScore, val):
-	return (maxScore-seuil) <= val
+def bellowSeuil(maxScore, currentScore):
+	return (maxScore-seuil) > currentScore
 
 
 def main():
 	k = 5
 	seqInput = "ACTGAAAATGAG"
 	seqDB = "AGCATGACTGAAGTGAG"
-	kmerList = buildKmer(k, seqInput)
+	(kmerList, kmerPos) = buildKmer(k, seqInput)
 	print (kmerList)
 	seed = makeSeed(k)
-	findHSP(kmerList,seqDB,seed)
+	(hspList, hspPos) = findHSP(kmerList,seqDB,seed)
+	hspExtendedList = extendGlouton(kmerList, hspList, kmerPos, seqDB, seqInput, hspPos)
 
 if __name__ == "__main__":
 	main()
