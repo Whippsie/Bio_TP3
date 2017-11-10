@@ -33,39 +33,49 @@ def makeSeed(k):
     return temp
 
 def findHSP(kmerList,seqDB, seed):
+    hspList=[]
+    hspPos=[]
     compteurPos=0
 
     #Pour chaque sous-mot
     for kmer in kmerList:
 	compteurPos = 0
-	compteurSeed = 0
         #On loop sur la longueur de la sequence
         for compteurSeq in range(len(seqDB)):
-            if seed[compteurSeed] == 1:
+            if seed[compteurPos] == 1:
 		    #Si le caractere est le meme dans le sous mot et la sequence
-		    if kmer[compteurPos] == seqDB[compteurSeq]:
-			#On continue d'incrementer dans le sous mot
-			compteurPos += 1
-		    #Sinon, on verifie le premier caractere pour repartir une sous boucle
-		    elif kmer[0] == seqDB[compteurSeq]:
-			charPos = 1
-		    #Si rien ne match, on repart du premier caractere
-		    else :
-			charPos = 0
-		    #On incremente la sequence totale
-		    compteurSeq += 1
-	    else:
-		    #On a un zero, free pass
-		    compteurSeq += 1
-		    charPos += 1
-	    compteurSeed+=1
+		    	if kmer[compteurPos] == seqDB[compteurSeq]:
+					if compteurPos == len(kmer) - 1:
+						#On a un mot!
+						hspList.append(kmer)
+						hspPos.append(compteurSeq)
+						compteurPos = 0
+					#On continue d'incrementer dans le sous mot
+					else:
+						compteurPos += 1
+						compteurSeq += 1
+				#Sinon, on verifie le premier caractere pour repartir une sous boucle
+				elif kmer[0] == seqDB[compteurSeq]:
+				compteurPos = 1
+				#Si rien ne match, on repart du premier caractere
+				else :
+				compteurPos = 0
+				#On incremente la sequence totale
+				compteurSeq += 1
+			else:
+				#On a un zero, free pass
+				compteurSeq += 1
+				compteurPos += 1
+    print(hspList)
+    print(hspPos)
 
 def main():
     k = 5
     seqInput = "ACTGAAAATGAG"
     seqDB = "AGCATGACTGAAGTGAG"
-    print(buildKmer(k, seqInput))
+    kmerList = buildKmer(k, seqInput)
     seed = makeSeed(k)
+    findHSP(kmerList,seqDB,seed)
 
 if __name__ == "__main__":
     main()
