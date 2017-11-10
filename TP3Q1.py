@@ -50,18 +50,25 @@ def findHSP(kmerList,seqDB, seed):
 						hspList.append(kmer)
 						hspPos.append(compteurSeq)
 						compteurPos = 0
+						for i in range(len(kmer)):
+							if kmer[i] == seqDB[compteurSeq-(len(kmer)-2)]:						
+								compteurPos += 1
+								compteurSeq += 1
+							else:
+								compteurSeq += 1
+								compteurPos = 0
 					#On continue d'incrementer dans le sous mot
 					else:
 						compteurPos += 1
 						compteurSeq += 1
 				#Sinon, on verifie le premier caractere pour repartir une sous boucle
 				elif kmer[0] == seqDB[compteurSeq]:
-				compteurPos = 1
-				#Si rien ne match, on repart du premier caractere
+					compteurPos = 1
+					#Si rien ne match, on repart du premier caractere
 				else :
-				compteurPos = 0
-				#On incremente la sequence totale
-				compteurSeq += 1
+					compteurPos = 0
+					#On incremente la sequence totale
+					compteurSeq += 1
 			else:
 				#On a un zero, free pass
 				compteurSeq += 1
