@@ -14,8 +14,9 @@ def buildKmer(k, inputUser):
             for j in range(k):
                 temp += inputUser[i + j]
             # On ajoute chaque kmer individuellement
-            kmerList.append(temp)
-            kmerPos.append(i)
+            if temp not in kmerList:
+                kmerList.append(temp)
+                kmerPos.append(i)
     return kmerList, kmerPos
 
 
@@ -41,45 +42,55 @@ def makeSeed(k):
 def findHSP(kmerList, seqDB, seed):
     hspList = []
     hspPos = []
+    infinite = 0
     # Pour chaque sous-mot
     for kmer in kmerList:
         compteurPos = 0
         # On loop sur la longueur de la sequence
-        for compteurSeq in range(len(seqDB)):
+        compteurSeq = 0
+        while compteurSeq < len(seqDB):
             if seed[compteurPos] == "1":
                 # Si le caractere est le meme dans le sous mot et la sequence
                 if kmer[compteurPos] == seqDB[compteurSeq]:
                     if compteurPos == len(kmer) - 1:
                         # On a un mot!
                         hspList.append(kmer)
-                        hspPos.append(compteurSeq)
-                        compteurPos = 0
-                        for i in range(len(kmer)):
-                            if kmer[i] == seqDB[compteurSeq - (len(kmer) - 2)]:
-                                compteurPos += 1
-                                compteurSeq += 1
+                        hspPos.append(compteurSeq - len(kmer) + 1)
+                        if compteurSeq == (len(seqDB)-1):
+                            compteurSeq += 1
+                        else:
+                            temp = (compteurSeq - compteurPos) + 1
+                            if temp == (compteurSeq-len(kmer))+1:
+                                compteurSeq = temp + 1
                             else:
-                                compteurSeq += 1
-                                compteurPos = 0
-                    # On continue d'incrementer dans le sous mot
+                                compteurSeq = temp
+                            compteurPos = 0
+                        # On continue d'incrementer dans le sous mot
                     else:
                         compteurPos += 1
                         compteurSeq += 1
                 # Sinon, on verifie le premier caractere pour repartir une sous boucle
-                elif kmer[0] == seqDB[compteurSeq]:
-                    compteurPos = 1
-                # Si rien ne match, on repart du premier caractere
                 else:
-                    compteurPos = 0
-                    # On incremente la sequence totale
-                    compteurSeq += 1
+                    if compteurPos > 0:
+                        if compteurSeq == (len(seqDB)-1):
+                            compteurSeq += 1
+                        else:
+                            if compteurPos > 1:
+                                temp = (compteurSeq - compteurPos) + 1
+                                if temp == (compteurSeq - len(kmer)) + 1:
+                                    compteurSeq = temp + 1
+                                else:
+                                    compteurSeq = temp
+                            compteurPos = 0
+                    else:
+                        compteurSeq += 1
             else:
                 # On a un zero, free pass
-                compteurSeq += 1
                 compteurPos += 1
-    print(hspList)
-    print(hspPos)
-    return (hspList, hspPos)
+                compteurSeq += 1
+    print("hspList:", hspList)
+    print("hspPos in original seq:", hspPos)
+    return hspList, hspPos
 
 
 def extendGlouton(kmerList, hspList, kmerPos, seqDB, seq, hspPos):
@@ -92,7 +103,7 @@ def extendGlouton(kmerList, hspList, kmerPos, seqDB, seq, hspPos):
         maxScore = len(hsp) * 5
         currentScore = maxScore
         currentHSP = hsp
-        while not bellowSeuil(maxScore, currentScore and not isEnd(currentHSP, seq, seqDB)):
+        while not bellowSeuil(maxScore, currentScore) and not isEnd(currentHSP, seq, seqDB):
             var = kmerList.index(hsp)
             pos = kmerPos[var]
             bothSidesString = currentHSP
@@ -139,7 +150,7 @@ def extendGlouton(kmerList, hspList, kmerPos, seqDB, seq, hspPos):
             if currentScore > maxScore:
                 maxScore = currentScore
         hspExtendedList.append(currentHSP)
-    print(hspExtendedList)
+    print("hspExtended:", hspExtendedList)
     return hspExtendedList
 
 
@@ -154,13 +165,13 @@ def bellowSeuil(maxScore, currentScore):
 
 
 def main():
-    k = 5
-    seqInput = "ACTGAAAATGAG"
-    seqDB = "AGCATGACTGAAGTGAG"
-    (kmerList, kmerPos) = buildKmer(k, seqInput)
-    print (kmerList)
+    k = 4
+    seqInput = "ACGCGCGAAGAGCG"
+    seqDB = "TACGCGCGAAGCG"
+    kmerList, kmerPos = buildKmer(k, seqInput)
+    print ("kmerList:", kmerList)
     seed = makeSeed(k)
-    (hspList, hspPos) = findHSP(kmerList, seqDB, seed)
+    hspList, hspPos = findHSP(kmerList, seqDB, seed)
     hspExtendedList = extendGlouton(kmerList, hspList, kmerPos, seqDB, seqInput, hspPos)
 
 
