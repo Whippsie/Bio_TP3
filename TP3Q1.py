@@ -98,16 +98,19 @@ def extendGlouton(kmerList, hspList, kmerPos, seqDB, seq, hspPos):
     for hsp in hspList:
         rightString = ""
         leftString = ""
+        #TODO: Probleme si plus qu'un HSP dans la sequence, nous donnera toujours le meme
         posDB = hspList.index(hsp)
         posDB = hspPos[posDB]
         maxScore = len(hsp) * 5
         currentScore = maxScore
         currentHSP = hsp
+        pos = kmerList.index(hsp)
+        pos = kmerPos[pos]
+
         while not bellowSeuil(maxScore, currentScore) and not isEnd(currentHSP, seq, seqDB):
-            var = kmerList.index(hsp)
-            pos = kmerPos[var]
+
             bothSidesString = currentHSP
-            if pos > 0:
+            if pos > 0 and posDB > 0:
                 bothSidesString = seq[pos - 1] + currentHSP
                 tempChar = seq[pos - 1]
                 tempCharDB = seqDB[posDB - 1]
@@ -161,7 +164,7 @@ def isEnd(currentHSP, seq, seqDB):
 
 
 def bellowSeuil(maxScore, currentScore):
-    return (maxScore - seuil) > currentScore
+    return (maxScore - seuil) >= currentScore
 
 
 def main():
