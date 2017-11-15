@@ -152,8 +152,10 @@ def extendGlouton(kmerList, hspList, kmerPos, seqDB, seq, hspPos):
 
             if currentScore > maxScore:
                 maxScore = currentScore
-        hspExtendedList.append(currentHSP)
-    print("hspExtended:", hspExtendedList)
+
+        hspExtendedList.append(Hsp(currentHSP, pos, pos + len(currentHSP) - 1, posDB, posDB + len(currentHSP) - 1))
+    for hsp in hspExtendedList:
+        print ("hspExtended:", hsp.hspString)
     return hspExtendedList
 
 
@@ -166,6 +168,34 @@ def isEnd(currentHSP, seq, seqDB):
 def bellowSeuil(maxScore, currentScore):
     return (maxScore - seuil) >= currentScore
 
+def merge(hspExtendedList, seqInput):
+    i = 0
+    while i < (len(hspExtendedList) - 1):
+        for j in range((i+1), len(hspExtendedList)):
+            hsp1 = hspExtendedList[i]
+            hsp2 = hspExtendedList[j]
+            if (hsp1.seqStart - hsp2.seqStart) == (hsp1.dbStart - hsp2.dbStart):
+                newSeqStart = min([hsp1.seqStart, hsp2.seqStart])
+                newSeqEnd = max([hsp1.seqEnd, hsp2.seqEnd])
+                newDbStart = min([hsp1.dbStart, hsp2.dbStart])
+                newDbEnd = max([hsp1.dbEnd, hsp2.dbEnd])
+                newHspString = seqInput[newSeqStart:(newSeqEnd + 1)]
+                hspExtendedList[i] = Hsp(newHspString, newSeqStart, newSeqEnd, newDbStart, newDbEnd)
+                del hspExtendedList[j]
+                break
+            if j == len(hspExtendedList) - 1:
+                i = i + 1
+    for hsp in hspExtendedList:
+        print ("hspMerged:", hsp.hspString)
+    return hspExtendedList
+
+class Hsp:
+    def __init__(self, hspString, seqStart, seqEnd, dbStart, dbEnd):
+        self.hspString = hspString
+        self.seqStart = seqStart
+        self.seqEnd = seqEnd
+        self.dbStart = dbStart
+        self.dbEnd = dbEnd
 
 def main():
     k = 4
@@ -176,6 +206,7 @@ def main():
     seed = makeSeed(k)
     hspList, hspPos = findHSP(kmerList, seqDB, seed)
     hspExtendedList = extendGlouton(kmerList, hspList, kmerPos, seqDB, seqInput, hspPos)
+    hspMergedList = merge(hspExtendedList, seqInput)
 
 
 if __name__ == "__main__":
