@@ -24,12 +24,10 @@ def makeParser():
     parser = argparse.ArgumentParser(description='TP3_Bio')
     parser.add_argument('-i', help='Sequence ')
     parser.add_argument('-db', help='Base de donnees')
-    parser.add_argument('-E', help='todo')
-    parser.add_argument('-ss', help='todo')
+    parser.add_argument('-E', help='E Value')
+    parser.add_argument('-ss', help='SS')
     parser.add_argument('-seed', help='Graine 1 pour present, 0 pour no care')
-
-    args = parser.parse_args()
-    # print(args.accumulate(args.integers))
+    return parser.parse_args()
 
 
 def makeSeed(k):
@@ -196,6 +194,15 @@ class Hsp:
         self.seqEnd = seqEnd
         self.dbStart = dbStart
         self.dbEnd = dbEnd
+        
+def calcBitScore(scoreBrut):
+    lambd = 0.192
+    k = 0.176
+    return round(((lambd*scoreBrut)-numpy.log(k)/(numpy.log(2))), 6)
+
+
+def calcEValue(lseq1, lseqdb, bitscore):
+    return lseq1*lseqdb*(numpy.power(2, -bitscore))
 
 def main():
     k = 4
@@ -207,7 +214,11 @@ def main():
     hspList, hspPos = findHSP(kmerList, seqDB, seed)
     hspExtendedList = extendGlouton(kmerList, hspList, kmerPos, seqDB, seqInput, hspPos)
     hspMergedList = merge(hspExtendedList, seqInput)
-
+    args = makeParser()
+    #NOTE : Args all treated as string
+    #if args.i:
+    #.format(args.square, answer)
+    # print(args.accumulate(args.integers))
 
 if __name__ == "__main__":
     main()
