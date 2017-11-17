@@ -51,7 +51,8 @@ def makeSeed(k):
 
 def findHSP(kmerList, seqDB, seed):
     hspList = []
-    hspPos = []
+    hspPosDB = []
+    hspPosOriginale = []
     infinite = 0
     # Pour chaque sous-mot
     for kmer in kmerList:
@@ -65,7 +66,7 @@ def findHSP(kmerList, seqDB, seed):
                     if compteurPos == len(kmer) - 1:
                         # On a un mot!
                         hspList.append(kmer)
-                        hspPos.append(compteurSeq - len(kmer) + 1)
+                        hspPosDB.append(compteurSeq - len(kmer) + 1)
                         if compteurSeq == (len(seqDB)-1):
                             compteurSeq += 1
                         else:
@@ -99,12 +100,13 @@ def findHSP(kmerList, seqDB, seed):
                 compteurPos += 1
                 compteurSeq += 1
     print("hspList:", hspList)
-    print("hspPos in original seq:", hspPos)
-    return hspList, hspPos
+    print("hspPos in DB seq:", hspPosDB)
+    return hspList, hspPosDB
 
 
 def extendGlouton(kmerList, hspList, kmerPos, seqDB, seq, hspPos):
     hspExtendedList = []
+    hspScoreList = []
     for hsp in hspList:
         rightString = ""
         leftString = ""
@@ -118,8 +120,8 @@ def extendGlouton(kmerList, hspList, kmerPos, seqDB, seq, hspPos):
         pos = kmerPos[pos]
 
         while not bellowSeuil(maxScore, currentScore) and not isEnd(currentHSP, seq, seqDB):
-
             bothSidesString = currentHSP
+            # print("pos:", pos," posDB:", posDB)
             if pos > 0 and posDB > 0:
                 bothSidesString = seq[pos - 1] + currentHSP
                 tempChar = seq[pos - 1]
@@ -149,7 +151,7 @@ def extendGlouton(kmerList, hspList, kmerPos, seqDB, seq, hspPos):
             scoreBoth = currentScore + (scoreLeft - currentScore) + (scoreRight - currentScore)
             currentScore = max(scoreLeft, scoreRight, scoreBoth)
 
-            if currentScore == scoreBoth:
+            if currentScore == scoreBoth or currentScore == -9000:
                 currentHSP = bothSidesString
                 pos -= 1
                 posDB -= 1
@@ -164,9 +166,10 @@ def extendGlouton(kmerList, hspList, kmerPos, seqDB, seq, hspPos):
                 maxScore = currentScore
 
         hspExtendedList.append(Hsp(currentHSP, pos, pos + len(currentHSP) - 1, posDB, posDB + len(currentHSP) - 1))
+        hspScoreList.append(maxScore)
     for hsp in hspExtendedList:
         print ("hspExtended:", hsp.hspString)
-    return hspExtendedList
+    return hspExtendedList,hspScoreList
 
 
 def isEnd(currentHSP, seq, seqDB):
@@ -206,6 +209,13 @@ class Hsp:
         self.seqEnd = seqEnd
         self.dbStart = dbStart
         self.dbEnd = dbEnd
+
+def filterHSP(hspList, hspScoreList, l1, ldb):
+    i = 0
+    for hsp in hspList:
+        bitscore = calcBitScore(hspScoreList[i])
+        calcEValue(l1,ldb,bitscore)
+        i += 1
         
 def calcBitScore(scoreBrut):
     lambd = 0.192
@@ -216,12 +226,21 @@ def calcBitScore(scoreBrut):
 def calcEValue(lseq1, lseqdb, bitscore):
     return lseq1*lseqdb*(numpy.power(2, -bitscore))
 
+def getLengthSeqDB(seqSearchDB):
+    lgt = 0
+    for seq in seqSearchDB:
+         lgt += len(seq)
+    return lgt
+
+# CODE TP1
 def alignLocal(seq1, seqDB):
     matrix, scoreMax, scoreMaxPos = makeMatrix(seq1,seqDB)
+    print(matrix)
+    print(scoreMax)
     path, end = sequencePath(matrix, scoreMaxPos, seq1, seqDB)
     aligned, alignValue = alignSequences(end, path, seq1, seqDB, scoreMaxPos, matrix.shape)
     print(aligned)
-    print(alignValue)
+    print("Alignement value:",alignValue)
 
 def makeMatrix (seq1, seqDB):
     matrix = numpy.zeros(shape=(len(seq1)+1,len(seqDB)+1))
@@ -257,10 +276,10 @@ def alignSequences(start, path, seq1, seq2, end, size):
 
 def getScore(seq1, seqDB, i,j,matrix):
     if seq1[i-1] == seqDB[j-1]:
-        match = 1
+        mymatch = 1
     else:
-        match = -1
-    dscore = matrix[i - 1][j - 1] + match
+        mymatch = -1
+    dscore = matrix[i - 1][j - 1] + mymatch
     uscore = matrix[i - 1][j] + indel
     lscore = matrix[i][j - 1] + indel
     return max (0, dscore, uscore, lscore)
@@ -273,7 +292,6 @@ def sequencePath(matrice, pos, seq1, seq2):
     y = pos[1]
     path = []
     current = matrice[x][y]
-    match,mismatch,indel = 1,-1,-1
 
     while ((x > 0) and (y > 0)):
         if ((current - mismatch == matrice[x-1][y-1]) and (seq1[x-1] != seq2[y-1])) or ((current - match == matrice[x-1][y-1]) and (seq1[x-1] == seq2[y-1])):
@@ -371,21 +389,42 @@ def reverseSeq(seq):
 
   return seqrev
 
+# CODE TP1
 
 def main():
+    print(" ")
+    print(" ")
+    print("DELIMITER====================================================================")
     k = 4
     seqSearch = fastaSequences("unknown.fasta")
     seqInput = seqSearch[0]
+
+    # tests
     # seqInput = "ACGCGCGAAGAGCG"
-    seqDB = "TACGCGCGAAGCG"
-    alignLocal(seqInput, seqDB)
+    # seqDB = "TACGCGCGAAGCG"
+    # seqDB = "TACGCGTGAAGCG"
+    # seqDB = "TACGCGCGAAACG"
+    # seqDB = "TACGCGTGAAACG"
+
+    seqSearchDB = fastaSequences("tRNAs.fasta")
+    seqDB = seqSearchDB[0]
+    
+    print("seq input : ",seqInput)
+    print("seq DB : ", seqDB)
+
+    # MARCHE PAS POUR L'INSTANT
+    # alignLocal(seqInput, seqDB)
     kmerList, kmerPos = buildKmer(k, seqInput)
-    print ("kmerList:", kmerList)
     seed = makeSeed(k)
     hspList, hspPos = findHSP(kmerList, seqDB, seed)
-    hspExtendedList = extendGlouton(kmerList, hspList, kmerPos, seqDB, seqInput, hspPos)
+    hspExtendedList,hspScoreList = extendGlouton(kmerList, hspList, kmerPos, seqDB, seqInput, hspPos)
     hspMergedList = merge(hspExtendedList, seqInput)
+
+    #PAS FINI
+    dbSeqLength = getLengthSeqDB(seqSearchDB)
+    filterHSP(hspList, hspScoreList, len(seqInput), dbSeqLength)
     args = makeParser()
+
     #NOTE : Args all treated as string
     #if args.i:
     #.format(args.square, answer)
