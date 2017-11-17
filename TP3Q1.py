@@ -1,7 +1,19 @@
+#!/usr/bin/env python
+# encoding: utf-8
+
 import argparse
+import numpy
 
 seuil = 4
+match,mismatch,indel=1,-1,-1
 
+def fastaSequences(filename):
+  sequences = []
+  with open(filename, 'r') as f:
+    for line in f:
+      if not '>' in line[0]:
+		sequences.append(line.strip("\n"))      
+  return sequences
 
 def buildKmer(k, inputUser):
     kmerList = []
@@ -204,10 +216,169 @@ def calcBitScore(scoreBrut):
 def calcEValue(lseq1, lseqdb, bitscore):
     return lseq1*lseqdb*(numpy.power(2, -bitscore))
 
+def alignLocal(seq1, seqDB):
+    matrix, scoreMax, scoreMaxPos = makeMatrix(seq1,seqDB)
+    path, end = sequencePath(matrix, scoreMaxPos, seq1, seqDB)
+    aligned, alignValue = alignSequences(end, path, seq1, seqDB, scoreMaxPos, matrix.shape)
+    print(aligned)
+    print(alignValue)
+
+def makeMatrix (seq1, seqDB):
+    matrix = numpy.zeros(shape=(len(seq1)+1,len(seqDB)+1))
+    shape = matrix.shape
+    indel=-1
+    scoreMax = 0
+    scoreMaxPos = (0,0)
+    for i in range(1,shape[0]):
+        for j in range(1,shape[1]):
+            score = getScore(seq1, seqDB, i, j, matrix)
+            if checkMax(score, scoreMax):
+                scoreMax = score
+                scoreMaxPos = (i,j)
+    return matrix, scoreMax, scoreMaxPos
+
+def alignSequences(start, path, seq1, seq2, end, size):
+
+    path.reverse()
+    temp = seq2
+    seq2 = seq1
+    seq1 = temp
+
+    """Indels de départ"""
+    seq1align,seq2align,x,y,z = genIndelStart(start,seq1,seq2)
+
+    """Séquences de chemin"""
+    seq1align,seq2align,y,z,i = genSeqPath(seq1align,seq2align,path,y,z,seq1,seq2)
+
+    """Complétion de la séquence"""
+    seq1align,seq2align= genIndelEnd(seq1align,seq2align,end,size,seq1,seq2)
+
+    return [seq1align, seq2align], i
+
+def getScore(seq1, seqDB, i,j,matrix):
+    if seq1[i-1] == seqDB[j-1]:
+        match = 1
+    else:
+        match = -1
+    dscore = matrix[i - 1][j - 1] + match
+    uscore = matrix[i - 1][j] + indel
+    lscore = matrix[i][j - 1] + indel
+    return max (0, dscore, uscore, lscore)
+
+def checkMax(score, scoreMax):
+    return score > scoreMax
+
+def sequencePath(matrice, pos, seq1, seq2):
+    x = pos[0]
+    y = pos[1]
+    path = []
+    current = matrice[x][y]
+    match,mismatch,indel = 1,-1,-1
+
+    while ((x > 0) and (y > 0)):
+        if ((current - mismatch == matrice[x-1][y-1]) and (seq1[x-1] != seq2[y-1])) or ((current - match == matrice[x-1][y-1]) and (seq1[x-1] == seq2[y-1])):
+            x -= 1
+            y -= 1
+            path.append([1,1])
+        elif (current - indel == matrice[x-1][y]):
+            x -= 1
+            current = matrice[x][y]
+            path.append([1,0])
+        elif (current - indel == matrice[x][y-1]):
+            y -= 1
+            current = matrice[x][y]
+            path.append([0,1])
+        else:
+            break
+        current = matrice[x][y]
+    return path, numpy.array([x,y])
+
+def genIndelStart(start, seq1, seq2):
+    y = 0
+    z = 0
+    seq1align = ""
+    seq2align = ""
+    if start[0] > 0:
+        x = start[0]
+        while x > 0:
+            seq1align += "-"
+            x -= 1
+            seq2align += seq2[y]
+            y += 1
+    if start[1] > 0:
+        x = start[1]
+        while x > 0:
+            seq2align += "-"
+            x -= 1
+            seq1align += seq1[z]
+            z += 1
+    else:
+        pass
+    return seq1align, seq2align, x,y,z
+
+def genSeqPath(s1,s2,p,y,z,sq1,sq2):
+  i = 0
+  while i < len(p):
+    if p[i][0] == 1:
+      s2 += sq2[y]
+      y += 1
+    else:
+      s2 += "-"
+
+    if p[i][1] == 1:
+      s1 += sq1[z]
+      z += 1
+    else:
+      s1 += "-"
+    i += 1
+
+  return s1,s2,y,z,i
+
+def genIndelEnd(s1,s2,end,size,sq1,sq2):
+  size_ligne = size[0] - 1
+  size_col = size[1] - 1
+
+  if end[0] < size_ligne:
+    x = end[0]
+    while x < size_ligne:
+      s1 += "-"
+      s2 += sq2[x]
+      x += 1
+  elif end[1] < size_col:
+    x = end[1]
+    while x < size_col:
+      s2 += "-"
+      s1 += sq1[x]
+      x += 1
+
+  return s1,s2
+
+def reverseSeq(seq):
+  seqrev=""
+  for s in seq:
+    if s=="A":
+      seqrev+="T"
+    elif s=="C":
+      seqrev+="G"
+    elif s=="T":
+      seqrev+="A"
+    elif s=="G":
+      seqrev+="C"
+
+  l=list(seqrev)
+  l.reverse()
+  seqrev =''.join(l)
+
+  return seqrev
+
+
 def main():
     k = 4
-    seqInput = "ACGCGCGAAGAGCG"
+    seqSearch = fastaSequences("unknown.fasta")
+    seqInput = seqSearch[0]
+    # seqInput = "ACGCGCGAAGAGCG"
     seqDB = "TACGCGCGAAGCG"
+    alignLocal(seqInput, seqDB)
     kmerList, kmerPos = buildKmer(k, seqInput)
     print ("kmerList:", kmerList)
     seed = makeSeed(k)
