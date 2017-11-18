@@ -109,12 +109,12 @@ def findHSP(kmerList, seqDB, seed):
 def extendGlouton(kmerList, hspList, kmerPos, seqDB, seq, hspPos):
     hspExtendedList = []
     hspScoreList = []
+    i = 0
     for hsp in hspList:
         rightString = ""
         leftString = ""
-        # TODO: Probleme si plus qu'un HSP dans la sequence, nous donnera toujours le meme
-        posDB = hspList.index(hsp)
-        posDB = hspPos[posDB]
+        # i is the position of the current hsp, we don't use index to protect the twin hsp who wouldn't be caught
+        posDB = hspPos[i]
         maxScore = len(hsp) * 5
         currentScore = maxScore
         currentHSP = hsp
@@ -169,6 +169,7 @@ def extendGlouton(kmerList, hspList, kmerPos, seqDB, seq, hspPos):
 
         hspExtendedList.append(Hsp(currentHSP, pos, pos + len(currentHSP) - 1, posDB, posDB + len(currentHSP) - 1))
         hspScoreList.append(maxScore)
+        i += 1
     for hsp in hspExtendedList:
         print ("hspExtended:", hsp.hspString)
     return hspExtendedList, hspScoreList
@@ -324,6 +325,7 @@ def sequencePath(matrice, pos, seq1, seq2):
         current = matrice[x][y]
     #return path, numpy.array([x, y])
     return path, None
+
 
 def genIndelStart(start, seq1, seq2):
     y = 0
