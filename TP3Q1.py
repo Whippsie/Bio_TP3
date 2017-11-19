@@ -5,6 +5,7 @@ import argparse
 import math
 
 seuil = 4
+seuilCutoff = 0.001
 match, mismatch, indel = 1, -1, -1
 
 
@@ -118,6 +119,8 @@ def extendGlouton(kmerList, hspList, kmerPos, seqDB, seq, hspPos):
         maxScore = len(hsp) * 5
         currentScore = maxScore
         currentHSP = hsp
+        lastScore = maxScore
+        lastHSP = hsp
         pos = kmerList.index(hsp)
         pos = kmerPos[pos]
 
@@ -167,11 +170,17 @@ def extendGlouton(kmerList, hspList, kmerPos, seqDB, seq, hspPos):
             if currentScore > maxScore:
                 maxScore = currentScore
 
-        hspExtendedList.append(Hsp(currentHSP, pos, pos + len(currentHSP) - 1, posDB, posDB + len(currentHSP) - 1))
-        hspScoreList.append(maxScore)
+            if not bellowSeuil(maxScore, currentScore):
+                lastHSP = currentHSP
+                lastScore = currentScore
+            else:
+                break
+
+        hspExtendedList.append(Hsp(lastHSP, pos, pos + len(currentHSP) - 1, posDB, posDB + len(currentHSP) - 1, lastScore))
+        hspScoreList.append(lastScore)
         i += 1
-    for hsp in hspExtendedList:
-        print ("hspExtended:", hsp.hspString)
+    # for hsp in hspExtendedList:
+    #     print ("hspExtended:", hsp.hspString)
     return hspExtendedList, hspScoreList
 
 
@@ -182,10 +191,10 @@ def isEnd(currentHSP, seq, seqDB):
 
 
 def bellowSeuil(maxScore, currentScore):
-    return (maxScore - seuil) >= currentScore
+    return (maxScore - currentScore) <= seuil
 
 
-def merge(hspExtendedList, seqInput):
+def merge(hspExtendedList, seqInput, seqDB):
     i = 0
     while i < (len(hspExtendedList) - 1):
         for j in range((i + 1), len(hspExtendedList)):
@@ -197,13 +206,14 @@ def merge(hspExtendedList, seqInput):
                 newDbStart = min([hsp1.dbStart, hsp2.dbStart])
                 newDbEnd = max([hsp1.dbEnd, hsp2.dbEnd])
                 newHspString = seqInput[newSeqStart:(newSeqEnd + 1)]
-                hspExtendedList[i] = Hsp(newHspString, newSeqStart, newSeqEnd, newDbStart, newDbEnd)
+                newScore = calcHspBruteScore(newHspString, seqDB, newDbStart)
+                hspExtendedList[i] = Hsp(newHspString, newSeqStart, newSeqEnd, newDbStart, newDbEnd, newScore)
                 del hspExtendedList[j]
                 break
             if j == len(hspExtendedList) - 1:
                 i = i + 1
-    for hsp in hspExtendedList:
-        print ("hspMerged:", hsp.hspString)
+    # for hsp in hspExtendedList:
+    #     print ("hspMerged:", hsp.hspString)
     return hspExtendedList
 
 def mergeable(hsp1, hsp2):
@@ -212,33 +222,49 @@ def mergeable(hsp1, hsp2):
             return True
     return False
 
-def filterMergedList(hspMergedList, seqDB):
-    hspMerged = ""
-    maxScore = -9000
-    for hsp in hspMergedList:
-        tempHspAlignment = alignment(hsp.hspString, seqDB)
-        if tempHspAlignment.score > maxScore:
-            maxScore = tempHspAlignment.score
-            hspMerged = tempHspAlignment.seqInput
-    print("Chosen HSP: ", hspMerged)
-    print("Alignment Score: ", maxScore)
-    return hspMerged, maxScore
+def calcHspBruteScore(hspString, seqDB, dbStart):
+    newScore = 0
+    j = dbStart
+    for i in range(0, len(hspString)):
+        if hspString[i] == seqDB[j]:
+            newScore += 5
+        else:
+            newScore += -4
+        j += 1
+    return newScore
+
 
 class Hsp:
-    def __init__(self, hspString, seqStart, seqEnd, dbStart, dbEnd):
+    def __init__(self, hspString, seqStart, seqEnd, dbStart, dbEnd, score):
         self.hspString = hspString
         self.seqStart = seqStart
         self.seqEnd = seqEnd
         self.dbStart = dbStart
         self.dbEnd = dbEnd
+        self.score = score
 
+class HspForFilter:
+    def __init__(self, hsp, bitscore, eValue):
+        self.hsp = hsp
+        self.bitscore = bitscore
+        self.eValue = eValue
 
-def filterHSP(hspList, hspScoreList, l1, ldb):
-    i = 0
+def filterHSP(hspList, l1, ldb):
+    hspWithScores = []
     for hsp in hspList:
-        bitscore = calcBitScore(hspScoreList[i])
-        calcEValue(l1, ldb, bitscore)
-        i += 1
+        bitscore = calcBitScore(hsp.score)
+        eValue = calcEValue(l1, ldb, bitscore)
+        hspWithScores.append(HspForFilter(hsp, bitscore, eValue))
+
+    bestBitScore = -9000
+    selectedHsp = None
+
+    for hsp in hspWithScores:
+        if hsp.eValue <= seuilCutoff and hsp.bitscore > bestBitScore:
+            bestBitScore = hsp.bitscore
+            selectedHsp = hsp
+
+    return selectedHsp
 
 
 def calcBitScore(scoreBrut):
@@ -274,7 +300,6 @@ def alignment(seq1, seq2):
     solvedMatrix, maxPos, maxScore = solveMatrix(matrix, directions, seq1, seq2)
     hspAlignment = traceback(directions, seq1, seq2, maxPos, maxScore)
     printAlignment(hspAlignment)
-    print (solvedMatrix)
     return hspAlignment
 
 
@@ -310,8 +335,6 @@ def solveMatrix (matrix, directionMatrix, seq1, seq2):
                 maxScore = score
                 maxPos = (i, j)
 
-    print (matrix)
-
     return matrix, maxPos, maxScore
 
 def evalScore (matrix, i, j, seq1, seq2):
@@ -338,7 +361,6 @@ def evalScore (matrix, i, j, seq1, seq2):
     elif left == score:
         dir = 3
 
-    print ("(i, j, score, dir)", i, j, score, dir)
     return score, dir
 
 def traceback (directions, seq1, seq2, start, score):
@@ -413,7 +435,7 @@ def main():
     print("DELIMITER====================================================================")
     k = 4
     seqSearch = fastaSequences("unknown.fasta")
-    seqInput = seqSearch[0]
+    #seqInput = seqSearch[0]
 
     # tests
     # seqInput = "ACGCGCGAAGAGCG"
@@ -423,31 +445,37 @@ def main():
     # seqDB = "TACGCGTGAAACG"
 
     seqSearchDB = fastaSequences("tRNAs.fasta")
-    seqDB = seqSearchDB[0]
+    #seqDB = seqSearchDB[0]
 
-    print("seq input : ", seqInput)
-    print("seq DB : ", seqDB)
+    for seqInput in seqSearch:
+        for seqDB in seqSearchDB:
+            print("seq input : ", seqInput)
+            print("seq DB : ", seqDB)
 
-    # MARCHE PAS POUR L'INSTANT
-    # alignLocal(seqInput, seqDB)
-    kmerList, kmerPos = buildKmer(k, seqInput)
-    seed = makeSeed(k)
+            # MARCHE PAS POUR L'INSTANT
+            # alignLocal(seqInput, seqDB)
+            kmerList, kmerPos = buildKmer(k, seqInput)
+            seed = makeSeed(k)
 
-    hspList, hspPos = findHSP(kmerList, seqDB, seed)
-    hspExtendedList, hspScoreList = extendGlouton(kmerList, hspList, kmerPos, seqDB, seqInput, hspPos)
-    hspMergedList = merge(hspExtendedList, seqInput)
-    hspMerged, hspMergedScore = filterMergedList(hspMergedList, seqDB)
+            hspList, hspPos = findHSP(kmerList, seqDB, seed)
+            hspExtendedList, hspScoreList = extendGlouton(kmerList, hspList, kmerPos, seqDB, seqInput, hspPos)
+            hspMergedList = merge(hspExtendedList, seqInput, seqDB)
 
-    # PAS FINI
-    dbSeqLength = getLengthSeqDB(seqSearchDB)
-    filterHSP(hspList, hspScoreList, len(seqInput), dbSeqLength)
-    args = makeParser()
+            # PAS FINI
+            dbSeqLength = getLengthSeqDB(seqSearchDB)
+            selectedHsp = filterHSP(hspMergedList, len(seqInput), dbSeqLength)
+            if selectedHsp is not None:
+                print ("Selected hsp: ", selectedHsp.hsp.hspString)
+                alignment(selectedHsp.hsp.hspString, seqDB)
+            else:
+                print ("Selected hsp: None")
 
-    # NOTE : Args all treated as string
-    # if args.i:
-    # .format(args.square, answer)
-    # print(args.accumulate(args.integers))
+            args = makeParser()
 
+            # NOTE : Args all treated as string
+            # if args.i:
+            # .format(args.square, answer)
+            # print(args.accumulate(args.integers))
 
 if __name__ == "__main__":
     main()
