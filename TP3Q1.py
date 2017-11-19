@@ -374,18 +374,18 @@ def traceback (directions, seq1, seq2, start, score):
 
     while trace != 0:
         if trace == 1:
-            i -= 1
-            j -= 1
             seq1Aligned.append(seq1[i-1])
             seq2Aligned.append(seq2[j-1])
-        elif trace == 2:
             i -= 1
+            j -= 1
+        elif trace == 2:
             seq1Aligned.append(seq1[i-1])
             seq2Aligned.append('-')
+            i -= 1
         else:
-            j -= 1
             seq2Aligned.append(seq2[j-1])
             seq1Aligned.append('-')
+            j -= 1
 
         trace = directions[i][j]
 
