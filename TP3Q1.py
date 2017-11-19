@@ -128,8 +128,8 @@ def extendGlouton(hspList, seqDB, seq, hspPos):
         lastHSP = hsp
         #TODO: vérifier, est-ce fixed?
         pos = hspObj.seqStart
-        if hsp == "CCAGTT":
-            print("stopqq")
+        # if hsp == "CCAGTT":
+        #     print("stopqq")
         while not bellowSeuil(maxScore, currentScore) and not isEnd(currentHSP, seq, seqDB):
             bothSidesString = currentHSP
             # print("pos:", pos," posDB:", posDB)
@@ -423,15 +423,20 @@ def traceback (directions, seq1, seq2, start, score):
 
     return hspAlignment
 
-def printAlignment (hspAlignment):
+def printSmithWaterman(hspAlignment):
+    print (hspAlignment.seqDB)
+    print (hspAlignment.seqInput)
+    print (" ")
+
+def printAlignment (hspAlignment, seqDB):
     dbStart = fixStartIndices(str(hspAlignment.dbStart))
     dbEnd = fixEndIndices(str(hspAlignment.dbEnd))
-    inputStart = fixStartIndices(str(hspAlignment.inputStart))
-    inputEnd = fixEndIndices(str(hspAlignment.inputEnd))
+    inputStart = fixStartIndices(str(hspAlignment.seqStart))
+    inputEnd = fixEndIndices(str(hspAlignment.seqEnd))
 
     print ("Alignement:")
-    print (inputStart + hspAlignment.seqInput + inputEnd)
-    print (dbStart + hspAlignment.seqDB + dbEnd)
+    print (inputStart + hspAlignment.hspString + inputEnd)
+    print (dbStart + seqDB[hspAlignment.dbStart:(hspAlignment.dbEnd+1)] + dbEnd)
     print ("---------------------------------------------")
     #print ("Score: ", hspAlignment.score)
 
@@ -469,7 +474,7 @@ def main():
     seqInput = "GAAAATCCTCGTGTCACCAGTTCAAATCTGGTTCCTGGCA"
     for seqDB in seqSearchDB:
         if '>' in seqDB:
-            print(seqDB)
+            #print(seqDB)
             temp = seqDB
             continue
         # MARCHE PAS POUR L'INSTANT
@@ -477,31 +482,31 @@ def main():
         kmerList = buildKmer(k, seqInput)
         hspList, hspPos = findHSP(kmerList, seqDB, seed)
         hspExtendedList = extendGlouton(hspList, seqDB, seqInput, hspPos)
-        for hsp in hspExtendedList:
-            print ("hsp extend",hsp.hspString)
+        # for hsp in hspExtendedList:
+        #     print ("hsp extend",hsp.hspString)
         hspMergedList = merge(hspExtendedList, seqInput, seqDB)
-        for hsp in hspMergedList:
-            print ("hsp merged",hsp.hspString)
+        # for hsp in hspMergedList:
+        #     print ("hsp merged",hsp.hspString)
         # PAS FINI
         dbSeqLength = getLengthSeqDB(seqSearchDB)
         selectedHsp = filterHSP(hspMergedList, len(seqInput), dbSeqLength)
         if selectedHsp is not None:
             bitscore = selectedHsp.bitscore
             eValue = selectedHsp.eValue
-
-            alignLocalWaterman = alignment(seqInput, seqDB)
-            print (temp , " Score: ", alignLocalWaterman.score, " Ident: TODO")
-            print("seq input : ", seqInput)
-            print("seq DB : ", seqDB)
-            print ("Selected hsp: ", selectedHsp.hsp.hspString)
-            print (" ")
+            # hspAlign = alignment(selectedHsp.hsp.hspString, seqDB)
+            hspAlign = alignment(seqInput, seqDB)
+            print (temp, " Score: ", hspAlign.score, " Ident: TODO")
+            printSmithWaterman(hspAlign)
+            # print("seq input : ", seqInput)
+            # print("seq DB : ", seqDB)
+            # print ("Selected hsp: ", selectedHsp.hsp.hspString)
+            # print (" ")
             print ("# Best HSP:")
-            print ("Id:",temp," Score brut:", selectedHsp.score, " Bitscore:", bitscore," Evalue: ", eValue)
-            #hspAlign = alignment(selectedHsp.hsp.hspString, seqDB)
-            #printAlignment(hspAlign)
-            print("Suppose etre")
-            print("GAAAATCCTCGTGTCACCAGTTCAAATC")
-            print("GAAAATCCTTGTGTCAGTGGTTCAAATC")
+            print ("Id:", temp, " Score brut:", selectedHsp.score, " Bitscore:", bitscore, " Evalue: ", eValue)
+            printAlignment(selectedHsp.hsp, seqDB)
+            # print("Suppose etre")
+            # print("GAAAATCCTCGTGTCACCAGTTCAAATC")
+            # print("GAAAATCCTTGTGTCAGTGGTTCAAATC")
         args = makeParser()
 
         # NOTE : Args all treated as string
