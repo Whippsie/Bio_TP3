@@ -4,8 +4,8 @@
 import argparse
 import math
 
-seuil = 4
-seuilCutoff = 0.001
+seuil = 12
+seuilCutoff = 0.1
 match, mismatch, indel = 1, -1, -1
 
 
@@ -120,9 +120,11 @@ def extendGlouton(kmerList, hspList, kmerPos, seqDB, seq, hspPos):
         currentHSP = hsp
         lastScore = maxScore
         lastHSP = hsp
+        #TODO: PAS bon si 2 fois le même hsp dans les kmers
         pos = kmerList.index(hsp)
         pos = kmerPos[pos]
-
+        if hsp == "CTGGCA":
+            print("hi")
         while not bellowSeuil(maxScore, currentScore) and not isEnd(currentHSP, seq, seqDB):
             bothSidesString = currentHSP
             # print("pos:", pos," posDB:", posDB)
@@ -178,8 +180,8 @@ def extendGlouton(kmerList, hspList, kmerPos, seqDB, seq, hspPos):
         hspExtendedList.append(Hsp(lastHSP, pos, pos + len(currentHSP) - 1, posDB, posDB + len(currentHSP) - 1, lastScore))
         hspScoreList.append(lastScore)
         i += 1
-    # for hsp in hspExtendedList:
-    #     print ("hspExtended:", hsp.hspString)
+    for hsp in hspExtendedList:
+        print ("hspExtended:", hsp.hspString)
     return hspExtendedList, hspScoreList
 
 
@@ -190,7 +192,7 @@ def isEnd(currentHSP, seq, seqDB):
 
 
 def bellowSeuil(maxScore, currentScore):
-    return (maxScore - currentScore) <= seuil
+    return (maxScore - currentScore) >= seuil
 
 
 def merge(hspExtendedList, seqInput, seqDB):
@@ -363,8 +365,6 @@ def evalScore (matrix, i, j, seq1, seq2):
     return score, dir
 
 def traceback (directions, seq1, seq2, start, score):
-    if seq2 == "GCGTTTGTAACTCAATGGATAGAGTGTCATGTTACGGCCATGAAAGTTGTGGGTTCAAGTCCTGCCAAGCGTA":
-        print("break")
     i, j = start
     inputEnd = i - 1
     dbEnd = j - 1
@@ -412,8 +412,9 @@ def printAlignment (hspAlignment):
     inputEnd = fixEndIndices(str(hspAlignment.inputEnd))
 
     print ("Alignement:")
-    print (dbStart + hspAlignment.seqDB + dbEnd)
     print (inputStart + hspAlignment.seqInput + inputEnd)
+    print (dbStart + hspAlignment.seqDB + dbEnd)
+    print ("---------------------------------------------")
     #print ("Score: ", hspAlignment.score)
 
 def fixStartIndices (str):
@@ -428,9 +429,11 @@ def fixEndIndices (str):
 #Code Alignement
 
 def main():
-    k = 4
+    # seed = makeSeed(k)
+    # POUR TESTER UNIQUEMENT
+    seed = "110011"
     #POUR TESTER UNIQUEMENT
-    k = len("111001101")
+    k = len(seed)
     seqSearch = fastaSequences("unknown.fasta")
     #seqInput = seqSearch[0]
 
@@ -441,26 +444,25 @@ def main():
     # seqDB = "TACGCGCGAAACG"
     # seqDB = "TACGCGTGAAACG"
 
-    seqSearchDB = fastaSequences("tRNAs.fasta")
+    seqSearchDB = fastaSequences("tRNA2s.fasta")
     #seqDB = seqSearchDB[0]
 
     #for seqInput in seqSearch:
-    seqInput = "GTCATGTTACGGCCATGAAAGTTGTGGGTTCAAGTCCTGCCA"
+    seqInput = "GAAAATCCTCGTGTCACCAGTTCAAATCTGGTTCCTGGCA"
     for seqDB in seqSearchDB:
         if '>' in seqDB:
+            print(seqDB)
             temp = seqDB
             continue
         # MARCHE PAS POUR L'INSTANT
         # alignLocal(seqInput, seqDB)
         kmerList, kmerPos = buildKmer(k, seqInput)
-        seed = makeSeed(k)
-        #POUR TESTER UNIQUEMENT
-        seed = "111001101"
+
 
         hspList, hspPos = findHSP(kmerList, seqDB, seed)
+        print("list:",hspList)
         hspExtendedList, hspScoreList = extendGlouton(kmerList, hspList, kmerPos, seqDB, seqInput, hspPos)
         hspMergedList = merge(hspExtendedList, seqInput, seqDB)
-
         # PAS FINI
         dbSeqLength = getLengthSeqDB(seqSearchDB)
         selectedHsp = filterHSP(hspMergedList, len(seqInput), dbSeqLength)
