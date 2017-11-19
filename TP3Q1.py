@@ -137,7 +137,7 @@ def extendGlouton(kmerList, hspList, kmerPos, seqDB, seq, hspPos):
                     leftString = seq[pos - 1] + currentHSP
                 else:
                     scoreLeft = currentScore - 4
-                    leftString = bothSidesString
+                    leftString = seq[pos - 1] + currentHSP
             else:
                 scoreLeft = -9000
 
@@ -150,7 +150,7 @@ def extendGlouton(kmerList, hspList, kmerPos, seqDB, seq, hspPos):
                     rightString = currentHSP + seq[pos + len(currentHSP)]
                 else:
                     scoreRight = currentScore - 4
-                    rightString = bothSidesString
+                    rightString = currentHSP + seq[pos + len(currentHSP)]
             else:
                 scoreRight = -9000
 
