@@ -102,8 +102,8 @@ def findHSP(kmerList, seqDB, seed):
                 # On a un zero, free pass
                 compteurPos += 1
                 compteurSeq += 1
-    print("hspList:", hspList)
-    print("hspPos in DB seq:", hspPosDB)
+    # print("hspList:", hspList)
+    # print("hspPos in DB seq:", hspPosDB)
     return hspList, hspPosDB
 
 
@@ -434,6 +434,8 @@ def main():
     print(" ")
     print("DELIMITER====================================================================")
     k = 4
+    #POUR TESTER UNIQUEMENT
+    k = len("111001101")
     seqSearch = fastaSequences("unknown.fasta")
     #seqInput = seqSearch[0]
 
@@ -449,13 +451,14 @@ def main():
 
     for seqInput in seqSearch:
         for seqDB in seqSearchDB:
-            print("seq input : ", seqInput)
-            print("seq DB : ", seqDB)
+
 
             # MARCHE PAS POUR L'INSTANT
             # alignLocal(seqInput, seqDB)
             kmerList, kmerPos = buildKmer(k, seqInput)
             seed = makeSeed(k)
+            #POUR TESTER UNIQUEMENT
+            seed = "111001101"
 
             hspList, hspPos = findHSP(kmerList, seqDB, seed)
             hspExtendedList, hspScoreList = extendGlouton(kmerList, hspList, kmerPos, seqDB, seqInput, hspPos)
@@ -465,10 +468,15 @@ def main():
             dbSeqLength = getLengthSeqDB(seqSearchDB)
             selectedHsp = filterHSP(hspMergedList, len(seqInput), dbSeqLength)
             if selectedHsp is not None:
+                bitscore = selectedHsp.bitscore
+                eValue = selectedHsp.eValue
+                print("DELIMITER====================================================================")
+                print("seq input : ", seqInput)
+                print("seq DB : ", seqDB)
                 print ("Selected hsp: ", selectedHsp.hsp.hspString)
+                print("bitscore = " + str(bitscore) + ", evalue = " + str(eValue))
                 alignment(selectedHsp.hsp.hspString, seqDB)
-            else:
-                print ("Selected hsp: None")
+
 
             args = makeParser()
 
