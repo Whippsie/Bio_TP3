@@ -114,7 +114,6 @@ def findHSP(kmerList, seqDB, seed):
 
 def extendGlouton(hspList, seqDB, seq, hspPos):
     hspExtendedList = []
-    hspScoreList = []
     i = 0
     for hspObj in hspList:
         hsp = hspObj.kmerString
@@ -127,9 +126,10 @@ def extendGlouton(hspList, seqDB, seq, hspPos):
         currentHSP = hsp
         lastScore = maxScore
         lastHSP = hsp
-        #TODO: PAS bon si 2 fois le même hsp dans les kmers
-
+        #TODO: vérifier, est-ce fixed?
         pos = hspObj.seqStart
+        if hsp == "CCAGTT":
+            print("stopqq")
         while not bellowSeuil(maxScore, currentScore) and not isEnd(currentHSP, seq, seqDB):
             bothSidesString = currentHSP
             # print("pos:", pos," posDB:", posDB)
@@ -181,13 +181,12 @@ def extendGlouton(hspList, seqDB, seq, hspPos):
                 lastScore = currentScore
             else:
                 break
-
-        hspExtendedList.append(Hsp(lastHSP, pos, pos + len(currentHSP) - 1, posDB, posDB + len(currentHSP) - 1, lastScore))
-        hspScoreList.append(lastScore)
+        temp = Hsp(lastHSP, pos, pos + len(currentHSP) - 1, posDB, posDB + len(currentHSP) - 1, lastScore)
+        hspExtendedList.append(temp)
         i += 1
     #for hsp in hspExtendedList:
         #print ("hspExtended:", hsp.hspString)
-    return hspExtendedList, hspScoreList
+    return hspExtendedList
 
 
 def isEnd(currentHSP, seq, seqDB):
@@ -477,7 +476,7 @@ def main():
         # alignLocal(seqInput, seqDB)
         kmerList = buildKmer(k, seqInput)
         hspList, hspPos = findHSP(kmerList, seqDB, seed)
-        hspExtendedList, hspScoreList = extendGlouton(hspList, seqDB, seqInput, hspPos)
+        hspExtendedList = extendGlouton(hspList, seqDB, seqInput, hspPos)
         for hsp in hspExtendedList:
             print ("hsp extend",hsp.hspString)
         hspMergedList = merge(hspExtendedList, seqInput, seqDB)
