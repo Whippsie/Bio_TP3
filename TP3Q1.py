@@ -13,8 +13,7 @@ def fastaSequences(filename):
     sequences = []
     with open(filename, 'r') as f:
         for line in f:
-            if '>' not in line[0]:
-                sequences.append(line.strip("\n"))
+            sequences.append(line.strip("\n"))
     return sequences
 
 
@@ -244,18 +243,18 @@ class Hsp:
         self.score = score
 
 class HspForFilter:
-    def __init__(self, hsp, bitscore, eValue):
+    def __init__(self, hsp, bitscore, eValue, score):
         self.hsp = hsp
         self.bitscore = bitscore
         self.eValue = eValue
+        self.score = score
 
 def filterHSP(hspList, l1, ldb):
     hspWithScores = []
     for hsp in hspList:
         bitscore = calcBitScore(hsp.score)
         eValue = calcEValue(l1, ldb, bitscore)
-        hspWithScores.append(HspForFilter(hsp, bitscore, eValue))
-
+        hspWithScores.append(HspForFilter(hsp, bitscore, eValue, hsp.score))
     bestBitScore = -9000
     selectedHsp = None
 
@@ -270,7 +269,7 @@ def filterHSP(hspList, l1, ldb):
 def calcBitScore(scoreBrut):
     lambd = 0.192
     k = 0.176
-    return round(((lambd * scoreBrut) - math.log(k) / (math.log(2))), 6)
+    return round((((lambd * scoreBrut) - math.log(k)) / (math.log(2))), 0)
 
 
 def calcEValue(lseq1, lseqdb, bitscore):
@@ -280,7 +279,8 @@ def calcEValue(lseq1, lseqdb, bitscore):
 def getLengthSeqDB(seqSearchDB):
     lgt = 0
     for seq in seqSearchDB:
-        lgt += len(seq)
+        if '>' not in seq:
+            lgt += len(seq)
     return lgt
 
 #Code Alignement
@@ -299,7 +299,6 @@ def alignment(seq1, seq2):
     matrix, directions = createMatrix(seq1, seq2)
     solvedMatrix, maxPos, maxScore = solveMatrix(matrix, directions, seq1, seq2)
     hspAlignment = traceback(directions, seq1, seq2, maxPos, maxScore)
-    printAlignment(hspAlignment)
     return hspAlignment
 
 
@@ -364,40 +363,39 @@ def evalScore (matrix, i, j, seq1, seq2):
     return score, dir
 
 def traceback (directions, seq1, seq2, start, score):
+    if seq2 == "GCGTTTGTAACTCAATGGATAGAGTGTCATGTTACGGCCATGAAAGTTGTGGGTTCAAGTCCTGCCAAGCGTA":
+        print("break")
     i, j = start
     inputEnd = i - 1
     dbEnd = j - 1
-    move = directions[i][j]
+    trace = directions[i][j]
     seq1Aligned = []
     seq2Aligned = []
 
-    while move != 0:
-        if move == 1:
-            seq1Aligned.append(seq1[i-1])
-            seq2Aligned.append(seq2[j-1])
+    while trace != 0:
+        if trace == 1:
             i -= 1
             j -= 1
-        elif move == 2:
+            seq1Aligned.append(seq1[i-1])
+            seq2Aligned.append(seq2[j-1])
+        elif trace == 2:
+            i -= 1
             seq1Aligned.append(seq1[i-1])
             seq2Aligned.append('-')
-            i -= 1
         else:
+            j -= 1
             seq2Aligned.append(seq2[j-1])
             seq1Aligned.append('-')
-            j -= 1
 
-        move = directions[i][j]
+        trace = directions[i][j]
 
-    if (i-1) >= 0:
+    if (i-1) >= 0 and (j-1) >= 0:
         seq1Aligned.append(seq1[i - 1])
         inputStart = i - 1
-    else:
-        inputStart = i
-
-    if (j-1) >= 0:
         seq2Aligned.append(seq2[j - 1])
         dbStart = j - 1
     else:
+        inputStart = i
         dbStart = j
 
     seq1Aligned = ''.join(reversed(seq1Aligned))
@@ -416,7 +414,7 @@ def printAlignment (hspAlignment):
     print ("Alignement:")
     print (dbStart + hspAlignment.seqDB + dbEnd)
     print (inputStart + hspAlignment.seqInput + inputEnd)
-    print ("Score: ", hspAlignment.score)
+    #print ("Score: ", hspAlignment.score)
 
 def fixStartIndices (str):
     while len(str) < 3:
@@ -430,9 +428,6 @@ def fixEndIndices (str):
 #Code Alignement
 
 def main():
-    print(" ")
-    print(" ")
-    print("DELIMITER====================================================================")
     k = 4
     #POUR TESTER UNIQUEMENT
     k = len("111001101")
@@ -449,41 +444,44 @@ def main():
     seqSearchDB = fastaSequences("tRNAs.fasta")
     #seqDB = seqSearchDB[0]
 
-    for seqInput in seqSearch:
-        for seqDB in seqSearchDB:
+    #for seqInput in seqSearch:
+    seqInput = "GTCATGTTACGGCCATGAAAGTTGTGGGTTCAAGTCCTGCCA"
+    for seqDB in seqSearchDB:
+        if '>' in seqDB:
+            temp = seqDB
+            continue
+        # MARCHE PAS POUR L'INSTANT
+        # alignLocal(seqInput, seqDB)
+        kmerList, kmerPos = buildKmer(k, seqInput)
+        seed = makeSeed(k)
+        #POUR TESTER UNIQUEMENT
+        seed = "111001101"
 
+        hspList, hspPos = findHSP(kmerList, seqDB, seed)
+        hspExtendedList, hspScoreList = extendGlouton(kmerList, hspList, kmerPos, seqDB, seqInput, hspPos)
+        hspMergedList = merge(hspExtendedList, seqInput, seqDB)
 
-            # MARCHE PAS POUR L'INSTANT
-            # alignLocal(seqInput, seqDB)
-            kmerList, kmerPos = buildKmer(k, seqInput)
-            seed = makeSeed(k)
-            #POUR TESTER UNIQUEMENT
-            seed = "111001101"
+        # PAS FINI
+        dbSeqLength = getLengthSeqDB(seqSearchDB)
+        selectedHsp = filterHSP(hspMergedList, len(seqInput), dbSeqLength)
+        if selectedHsp is not None:
+            bitscore = selectedHsp.bitscore
+            eValue = selectedHsp.eValue
+            hspAlign = alignment(selectedHsp.hsp.hspString, seqDB)
+            print (temp , " Score: ", hspAlign.score, " Ident: TODO")
+            print("seq input : ", seqInput)
+            print("seq DB : ", seqDB)
+            print ("Selected hsp: ", selectedHsp.hsp.hspString)
+            print (" ")
+            print ("# Best HSP:")
+            print ("Id:",temp," Score brut:", selectedHsp.score, " Bitscore:", bitscore," Evalue: ", eValue)
+            printAlignment(hspAlign)
+        args = makeParser()
 
-            hspList, hspPos = findHSP(kmerList, seqDB, seed)
-            hspExtendedList, hspScoreList = extendGlouton(kmerList, hspList, kmerPos, seqDB, seqInput, hspPos)
-            hspMergedList = merge(hspExtendedList, seqInput, seqDB)
-
-            # PAS FINI
-            dbSeqLength = getLengthSeqDB(seqSearchDB)
-            selectedHsp = filterHSP(hspMergedList, len(seqInput), dbSeqLength)
-            if selectedHsp is not None:
-                bitscore = selectedHsp.bitscore
-                eValue = selectedHsp.eValue
-                print("DELIMITER====================================================================")
-                print("seq input : ", seqInput)
-                print("seq DB : ", seqDB)
-                print ("Selected hsp: ", selectedHsp.hsp.hspString)
-                print("bitscore = " + str(bitscore) + ", evalue = " + str(eValue))
-                alignment(selectedHsp.hsp.hspString, seqDB)
-
-
-            args = makeParser()
-
-            # NOTE : Args all treated as string
-            # if args.i:
-            # .format(args.square, answer)
-            # print(args.accumulate(args.integers))
+        # NOTE : Args all treated as string
+        # if args.i:
+        # .format(args.square, answer)
+        # print(args.accumulate(args.integers))
 
 if __name__ == "__main__":
     main()
