@@ -137,7 +137,7 @@ def extendGlouton(kmerList, hspList, kmerPos, seqDB, seq, hspPos):
                     leftString = seq[pos - 1] + currentHSP
                 else:
                     scoreLeft = currentScore - 4
-                    leftString = currentHSP
+                    leftString = bothSidesString
             else:
                 scoreLeft = -9000
 
@@ -150,7 +150,7 @@ def extendGlouton(kmerList, hspList, kmerPos, seqDB, seq, hspPos):
                     rightString = currentHSP + seq[pos + len(currentHSP)]
                 else:
                     scoreRight = currentScore - 4
-                    rightString = currentHSP
+                    rightString = bothSidesString
             else:
                 scoreRight = -9000
 
@@ -226,6 +226,7 @@ def mergeable(hsp1, hsp2):
 def calcHspBruteScore(hspString, seqDB, dbStart):
     newScore = 0
     j = dbStart
+    print(hspString, " ", seqDB, " ", dbStart)
     for i in range(0, len(hspString)):
         if hspString[i] == seqDB[j]:
             newScore += 5
