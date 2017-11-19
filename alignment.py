@@ -34,11 +34,13 @@ def createMatrix(seq1, seq2):
     columns = len(seq2) + 1
 
     for row in range(rows):
-        rowArray = []
+        rowArrayScore = []
+        rowArrayDir = []
         for column in range(columns):
-            rowArray.append(0)
-        scoreMatrix.append(rowArray)
-        directionMatrix.append(rowArray)
+            rowArrayScore.append(0)
+            rowArrayDir.append(0)
+        scoreMatrix.append(rowArrayScore)
+        directionMatrix.append(rowArrayDir)
 
     return scoreMatrix, directionMatrix
 
@@ -52,8 +54,6 @@ def solveMatrix (matrix, directionMatrix, seq1, seq2):
         for j in range(1, columns):
             score, dir = evalScore(matrix, i, j, seq1, seq2)
             matrix[i][j] = score
-            print ("(i, j, score, dir)", i, j, score, dir)
-            print ("=======")
             directionMatrix[i][j] = dir
             if score > maxScore:
                 maxScore = score
@@ -64,10 +64,11 @@ def solveMatrix (matrix, directionMatrix, seq1, seq2):
     return matrix, maxPos, maxScore
 
 def evalScore (matrix, i, j, seq1, seq2):
-    if seq1[i - 1] == seq2[j - 1]:
-        diag = matrix[i - 1][j - 1] + match
+    diag = matrix[i-1][j-1]
+    if seq1[i-1] == seq2[j-1]:
+        diag += match
     else:
-        diag = matrix[i - 1][j - 1] + mismatch
+        diag += mismatch
 
     up = matrix[i-1][j] + indel
     left = matrix[i][j-1] + indel
@@ -87,7 +88,6 @@ def evalScore (matrix, i, j, seq1, seq2):
     elif left == score:
         dir = 3
 
-    print ("(i, j, score, dir)", i, j, score, dir)
     return score, dir
 
 def traceback (directions, seq1, seq2, start, score):

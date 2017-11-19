@@ -285,11 +285,13 @@ def createMatrix(seq1, seq2):
     columns = len(seq2) + 1
 
     for row in range(rows):
-        rowArray = []
+        rowArrayScore = []
+        rowArrayDir = []
         for column in range(columns):
-            rowArray.append(0)
-        scoreMatrix.append(rowArray)
-        directionMatrix.append(rowArray)
+            rowArrayScore.append(0)
+            rowArrayDir.append(0)
+        scoreMatrix.append(rowArrayScore)
+        directionMatrix.append(rowArrayDir)
 
     return scoreMatrix, directionMatrix
 
@@ -303,8 +305,6 @@ def solveMatrix (matrix, directionMatrix, seq1, seq2):
         for j in range(1, columns):
             score, dir = evalScore(matrix, i, j, seq1, seq2)
             matrix[i][j] = score
-            print ("(i, j, score, dir)", i, j, score, dir)
-            print ("=======")
             directionMatrix[i][j] = dir
             if score > maxScore:
                 maxScore = score
