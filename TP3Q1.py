@@ -4,8 +4,8 @@
 import argparse
 import math
 
-seuil = 12
-seuilCutoff = 0.1
+seuil = 5
+seuilCutoff = 10
 match, mismatch, indel = 1, -1, -1
 
 
@@ -59,54 +59,55 @@ def makeSeed(k):
 def findHSP(kmerList, seqDB, seed):
     hspList = []
     hspPosDB = []
-    hspPosOriginale = []
-    infinite = 0
     # Pour chaque sous-mot
     for kmerObj in kmerList:
         kmer = kmerObj.kmerString
+
         compteurPos = 0
         # On loop sur la longueur de la sequence
-        compteurSeq = 0
-        while compteurSeq < len(seqDB):
+        compteurSeqDB = 0
+        while compteurSeqDB < len(seqDB):
+            if kmer == "CCAGTT" and compteurSeqDB == 47:
+                print ("stop")
             if seed[compteurPos] == "1":
                 # Si le caractere est le meme dans le sous mot et la sequence
-                if kmer[compteurPos] == seqDB[compteurSeq]:
+                if kmer[compteurPos] == seqDB[compteurSeqDB]:
                     if compteurPos == len(kmer) - 1:
                         # On a un mot!
                         hspList.append(kmerObj)
-                        hspPosDB.append(compteurSeq - len(kmer) + 1)
-                        if compteurSeq == (len(seqDB) - 1):
-                            compteurSeq += 1
+                        hspPosDB.append(compteurSeqDB - len(kmer) + 1)
+                        if compteurSeqDB == (len(seqDB) - 1):
+                            compteurSeqDB += 1
                         else:
-                            temp = (compteurSeq - compteurPos) + 1
-                            if temp == (compteurSeq - len(kmer)) + 1:
-                                compteurSeq = temp + 1
+                            temp = (compteurSeqDB - compteurPos) + 1
+                            if temp == (compteurSeqDB - len(kmer)) + 1:
+                                compteurSeqDB = temp + 1
                             else:
-                                compteurSeq = temp
+                                compteurSeqDB = temp
                             compteurPos = 0
                             # On continue d'incrementer dans le sous mot
                     else:
                         compteurPos += 1
-                        compteurSeq += 1
+                        compteurSeqDB += 1
                 # Sinon, on verifie le premier caractere pour repartir une sous boucle
                 else:
                     if compteurPos > 0:
-                        if compteurSeq == (len(seqDB) - 1):
-                            compteurSeq += 1
+                        if compteurSeqDB == (len(seqDB) - 1):
+                            compteurSeqDB += 1
                         else:
                             if compteurPos > 1:
-                                temp = (compteurSeq - compteurPos) + 1
-                                if temp == (compteurSeq - len(kmer)) + 1:
-                                    compteurSeq = temp + 1
+                                temp = (compteurSeqDB - compteurPos) + 1
+                                if temp == (compteurSeqDB - len(kmer)) + 1:
+                                    compteurSeqDB = temp + 1
                                 else:
-                                    compteurSeq = temp
+                                    compteurSeqDB = temp
                             compteurPos = 0
                     else:
-                        compteurSeq += 1
+                        compteurSeqDB += 1
             else:
                 # On a un zero, free pass
                 compteurPos += 1
-                compteurSeq += 1
+                compteurSeqDB += 1
     # print("hspList:", hspList)
     # print("hspPos in DB seq:", hspPosDB)
     return hspList, hspPosDB
@@ -128,8 +129,8 @@ def extendGlouton(hspList, seqDB, seq, hspPos):
         lastHSP = hsp
         #TODO: vérifier, est-ce fixed?
         pos = hspObj.seqStart
-        # if hsp == "CCAGTT":
-        #     print("stopqq")
+        if hsp == "CCAGTT":
+             print("stopqq")
         while not bellowSeuil(maxScore, currentScore) and not isEnd(currentHSP, seq, seqDB):
             bothSidesString = currentHSP
             # print("pos:", pos," posDB:", posDB)
@@ -184,8 +185,14 @@ def extendGlouton(hspList, seqDB, seq, hspPos):
         temp = Hsp(lastHSP, pos, pos + len(currentHSP) - 1, posDB, posDB + len(currentHSP) - 1, lastScore)
         hspExtendedList.append(temp)
         i += 1
-    #for hsp in hspExtendedList:
-        #print ("hspExtended:", hsp.hspString)
+    j = 0
+    for hsp in hspList:
+        print ("hsp original ", j, " ", hsp.kmerString)
+        j += 1
+    j = 0
+    for hsp in hspExtendedList:
+        print ("hspExtended:", j, " ", hsp.hspString)
+        j += 1
     return hspExtendedList
 
 
@@ -206,7 +213,7 @@ def merge(hspExtendedList, seqInput, seqDB):
             hsp1 = hspExtendedList[i]
             hsp2 = hspExtendedList[j]
 
-            if hsp1.hspString=="GAAAATCCTCGTGTCACCA" and hsp2.hspString == "CCAGTTCAAATCT":
+            if hsp1.hspString == "GAAAATCCTCGTGTCACCA" and hsp2.hspString == "AGTTCAAATC":
                 print("stop")
             if mergeable(hsp1, hsp2):
                 newSeqStart = min([hsp1.seqStart, hsp2.seqStart])
@@ -224,9 +231,7 @@ def merge(hspExtendedList, seqInput, seqDB):
 
 def mergeable(hsp1, hsp2):
     if (hsp1.dbStart <= hsp2.dbStart and hsp1.dbEnd >= hsp2.dbStart) or (hsp1.dbStart <= hsp2.dbEnd and hsp1.dbEnd >= hsp2.dbEnd):
-        #print("almost there", hsp1.hspString, "|", hsp2.hspString)
         if (hsp1.seqStart - hsp2.seqStart) == (hsp1.dbStart - hsp2.dbStart):
-            #print("mergeable",hsp1.hspString,"|",hsp2.hspString)
             return True
     return False
 
@@ -305,14 +310,8 @@ class HspAlignment:
         self.dbEnd = dbEnd
 
 def alignment(seq1, seq2):
-    #print(seq1)
-    #print(seq2)
     matrix, directions = createMatrix(seq1, seq2)
-    #printMatrix(matrix)
-    #printMatrix(directions)
     solvedMatrix, directionMatrix, maxPos, maxScore = solveMatrix(matrix, directions, seq1, seq2)
-    #printMatrix(solvedMatrix)
-    #printMatrix(directionMatrix)
     hspAlignment = traceback(directionMatrix, seq1, seq2, maxPos, maxScore)
     return hspAlignment
 
@@ -379,6 +378,7 @@ def evalScore (matrix, i, j, seq1, seq2):
 def printMatrix(matrix):
     print('\n'.join([''.join(['{:4}'.format(item) for item in row])
                      for row in matrix]))
+
 
 def traceback (directions, seq1, seq2, start, score):
     i, j = start
@@ -454,59 +454,38 @@ def fixEndIndices (str):
 def main():
     # seed = makeSeed(k)
     # POUR TESTER UNIQUEMENT
-    seed = "110011"
+    seed = "11111111111"
     #POUR TESTER UNIQUEMENT
     k = len(seed)
     seqSearch = fastaSequences("unknown.fasta")
     #seqInput = seqSearch[0]
 
-    # tests
-    # seqInput = "ACGCGCGAAGAGCG"
-    # seqDB = "TACGCGCGAAGCG"
-    # seqDB = "TACGCGTGAAGCG"
-    # seqDB = "TACGCGCGAAACG"
-    # seqDB = "TACGCGTGAAACG"
-
-    seqSearchDB = fastaSequences("tRNA2s.fasta")
+    seqSearchDB = fastaSequences("tRNAs.fasta")
     #seqDB = seqSearchDB[0]
 
     #for seqInput in seqSearch:
-    seqInput = "GAAAATCCTCGTGTCACCAGTTCAAATCTGGTTCCTGGCA"
+    seqInput = "CGTAGTCGGCTAACGCATACGCTTGATAAGCGTAAGAGCCC"
     for seqDB in seqSearchDB:
         if '>' in seqDB:
-            #print(seqDB)
             temp = seqDB
             continue
-        # MARCHE PAS POUR L'INSTANT
-        # alignLocal(seqInput, seqDB)
         kmerList = buildKmer(k, seqInput)
         hspList, hspPos = findHSP(kmerList, seqDB, seed)
+        for hsp in hspList:
+            print hsp.kmerString
         hspExtendedList = extendGlouton(hspList, seqDB, seqInput, hspPos)
-        # for hsp in hspExtendedList:
-        #     print ("hsp extend",hsp.hspString)
         hspMergedList = merge(hspExtendedList, seqInput, seqDB)
-        # for hsp in hspMergedList:
-        #     print ("hsp merged",hsp.hspString)
-        # PAS FINI
         dbSeqLength = getLengthSeqDB(seqSearchDB)
         selectedHsp = filterHSP(hspMergedList, len(seqInput), dbSeqLength)
         if selectedHsp is not None:
             bitscore = selectedHsp.bitscore
             eValue = selectedHsp.eValue
-            # hspAlign = alignment(selectedHsp.hsp.hspString, seqDB)
             hspAlign = alignment(seqInput, seqDB)
             print (temp, " Score: ", hspAlign.score, " Ident: TODO")
             printSmithWaterman(hspAlign)
-            # print("seq input : ", seqInput)
-            # print("seq DB : ", seqDB)
-            # print ("Selected hsp: ", selectedHsp.hsp.hspString)
-            # print (" ")
             print ("# Best HSP:")
             print ("Id:", temp, " Score brut:", selectedHsp.score, " Bitscore:", bitscore, " Evalue: ", eValue)
             printAlignment(selectedHsp.hsp, seqDB)
-            # print("Suppose etre")
-            # print("GAAAATCCTCGTGTCACCAGTTCAAATC")
-            # print("GAAAATCCTTGTGTCAGTGGTTCAAATC")
         args = makeParser()
 
         # NOTE : Args all treated as string
