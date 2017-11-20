@@ -4,10 +4,7 @@
 import argparse
 import math
 
-seuil = 12
-seuilCutoff = 0.1
 match, mismatch, indel = 1, -1, -1
-
 
 def fastaSequences(filename):
     sequences = []
@@ -39,15 +36,6 @@ class Kmer:
         self.seqStart = seqStart
         self.seqEnd = seqStart + len(kmerString)
 
-def makeParser():
-    parser = argparse.ArgumentParser(description='TP3_Bio')
-    parser.add_argument('-i', help='Sequence ')
-    parser.add_argument('-db', help='Base de donnees')
-    parser.add_argument('-E', help='E Value')
-    parser.add_argument('-ss', help='SS')
-    parser.add_argument('-seed', help='Graine 1 pour present, 0 pour no care')
-    return parser.parse_args()
-
 
 def makeSeed(k):
     temp = ""
@@ -74,7 +62,7 @@ def findHSP(kmerList, seqDB, seed):
     return hspList, hspPosDB
 
 
-def extendGlouton(hspList, seqDB, seq, hspPos):
+def extendGlouton(hspList, seqDB, seq, hspPos, seuil):
     hspExtendedList = []
     i = 0
     for hspObj in hspList:
@@ -89,7 +77,7 @@ def extendGlouton(hspList, seqDB, seq, hspPos):
         lastScore = maxScore
         lastHSP = hsp
         pos = hspObj.seqStart
-        while not bellowSeuil(maxScore, currentScore) and not isEnd(currentHSP, seq, seqDB):
+        while not bellowSeuil(maxScore, currentScore, seuil) and not isEnd(currentHSP, seq, seqDB):
             bothSidesString = currentHSP
             if pos > 0 and posDB > 0:
                 bothSidesString = seq[pos - 1] + currentHSP
@@ -134,7 +122,7 @@ def extendGlouton(hspList, seqDB, seq, hspPos):
             if currentScore > maxScore:
                 maxScore = currentScore
 
-            if not bellowSeuil(maxScore, currentScore):
+            if not bellowSeuil(maxScore, currentScore, seuil):
                 lastHSP = currentHSP
                 lastScore = currentScore
             else:
@@ -151,7 +139,7 @@ def isEnd(currentHSP, seq, seqDB):
     return False
 
 
-def bellowSeuil(maxScore, currentScore):
+def bellowSeuil(maxScore, currentScore, seuil):
     return (maxScore - currentScore) >= seuil
 
 
@@ -212,7 +200,8 @@ class HspForFilter:
         self.eValue = eValue
         self.score = score
 
-def filterHSP(hspList, l1, ldb):
+
+def filterHSP(hspList, l1, ldb, seuilCutOff):
     hspWithScores = []
     for hsp in hspList:
         bitscore = calcBitScore(hsp.score)
@@ -222,7 +211,7 @@ def filterHSP(hspList, l1, ldb):
     selectedHsp = None
 
     for hsp in hspWithScores:
-        if hsp.eValue <= seuilCutoff and hsp.bitscore > bestBitScore:
+        if hsp.eValue <= seuilCutOff and hsp.bitscore > bestBitScore:
             bestBitScore = hsp.bitscore
             selectedHsp = hsp
 
@@ -236,7 +225,11 @@ def calcBitScore(scoreBrut):
 
 
 def calcEValue(lseq1, lseqdb, bitscore):
-    return lseq1 * lseqdb * (math.pow(2, -bitscore))
+    try:
+        ans = lseq1 * lseqdb * (math.pow(2, -bitscore))
+    except OverflowError:
+        ans = float('inf')
+    return ans
 
 
 def getLengthSeqDB(seqSearchDB):
@@ -260,12 +253,14 @@ class HspAlignment:
         self.dbEnd = dbEnd
         self.ident = ident(seqInput, seqDB)
 
+
 def ident(seq1, seq2):
     sim = float(0)
     for i in range(0, len(seq1)):
         if seq1[i] == seq2[i]:
             sim += 1
     return sim/len(seq1)
+
 
 def alignment(seq1, seq2):
     matrix, directions = createMatrix(seq1, seq2)
@@ -290,6 +285,7 @@ def createMatrix(seq1, seq2):
         directionMatrix.append(rowArrayDir)
 
     return scoreMatrix, directionMatrix
+
 
 def solveMatrix (matrix, directionMatrix, seq1, seq2):
     rows = len(seq1) + 1
@@ -374,19 +370,18 @@ def traceback (directions, seq1, seq2, start, score):
 
     seq1Aligned = ''.join(reversed(seq1Aligned))
     seq2Aligned = ''.join(reversed(seq2Aligned))
-    print("Meilleur alignement Waterman")
-    print ("Input:",seq1Aligned)
-    print ("DB:   ",seq2Aligned)
     hspAlignment = HspAlignment(seq1Aligned, seq2Aligned, score, inputStart, inputEnd, dbStart, dbEnd)
 
     return hspAlignment
+
 
 def printSmithWaterman(hspAlignment):
     print (hspAlignment.seqDB)
     print (hspAlignment.seqInput)
     print (" ")
 
-#Code found on Stackoverflow and modified to be of use here
+
+# Code found on Stackoverflow and modified to be of use here
 def quicksort(array):
     less = []
     equal = []
@@ -424,7 +419,6 @@ def printAlignment (hspAlignment, seqDB):
     print (inputStart + hspAlignment.hspString + inputEnd)
     print (dbStart + seqDB[hspAlignment.dbStart:(hspAlignment.dbEnd+1)] + dbEnd)
     print ("---------------------------------------------")
-    #print ("Score: ", hspAlignment.score)
 
 
 def fixStartIndices (str):
@@ -437,37 +431,63 @@ def fixEndIndices (str):
     while len(str) < 3:
         str = " " + str
     return str
-#Code Alignement
+
 
 def main():
-    # seed = makeSeed(k)
-    # POUR TESTER UNIQUEMENT
-    seed = "110011"
-    #POUR TESTER UNIQUEMENT
-    k = len(seed)
-    seqSearch = fastaSequences("unknown.fasta")
-    #seqInput = seqSearch[0]
+    parser = argparse.ArgumentParser(description='TP3_Bio')
+    parser.add_argument('-i', help='Sequence ')
+    parser.add_argument('-db', help='Base de donnees')
+    parser.add_argument('-E', help='E Value')
+    parser.add_argument('-ss', help='SS')
+    parser.add_argument('-seed', '--seed', help='Graine 1 pour présent, 0 pour no care')
+    args = parser.parse_args()
+    seqInput = args.i
+    test = 0
+    temp = ""
+    for c in seqInput:
+        if test != 0 and test != len(seqInput)-1:
+            temp += c
+        test += 1
+    seqInput = temp
+    seqSearchDB = fastaSequences(args.db)
+    if args.E:
+        seuil = float(args.E)
+    else:
+        seuil = 4
+    if args.ss:
+        seuilCutoff = float(args.ss)
+    else:
+        seuilCutoff = 0.001
+    if args.seed:
+        temp = ""
+        test = 0
+        for c in args.seed:
+            if test != 0 and test != len(args.seed) - 1:
+                temp += c
+            test += 1
+        seed = temp
+    else:
+        seed = makeSeed(11)
 
-    seqSearchDB = fastaSequences("tRNAs.fasta")
+    #seqSearch = fastaSequences("unknown.fasta")
+    #seqInput = seqSearch[0]
+    #seqSearchDB = fastaSequences("tRNAs.fasta")
     #seqDB = seqSearchDB[0]
 
-    #for seqInput in seqSearch:
-    #seqInput = "CGTAGTCGGCTAACGCATACGCTTGATAAGCGTAAGAGCCC"
-    seqInput = "GAAAATCCTCGTGTCACCAGTTCAAATCTGGTTCCTGGCA"
     selectedHspList = []
-    kmerList = buildKmer(k, seqInput)
+    kmerList = buildKmer(len(seed), seqInput)
+    temp = ""
     for seqDB in seqSearchDB:
         if '>' in seqDB:
             temp = seqDB
             continue
         hspList, hspPos = findHSP(kmerList, seqDB, seed)
-        hspExtendedList = extendGlouton(hspList, seqDB, seqInput, hspPos)
+        hspExtendedList = extendGlouton(hspList, seqDB, seqInput, hspPos, seuil)
         hspMergedList = merge(hspExtendedList, seqInput, seqDB)
         dbSeqLength = getLengthSeqDB(seqSearchDB)
-        selectedHsp = filterHSP(hspMergedList, len(seqInput), dbSeqLength)
+        selectedHsp = filterHSP(hspMergedList, len(seqInput), dbSeqLength, seuilCutoff)
         if selectedHsp is not None:
             selectedHspList.append(Result(selectedHsp, seqDB, temp))
-        args = makeParser()
     selectedHspList = quicksort(selectedHspList)
     for result in selectedHspList:
         selectedHsp = result.selectedHsp
@@ -477,14 +497,8 @@ def main():
         print (result.description, " Score: ", hspAlign.score, " Ident: ", hspAlign.ident)
         printSmithWaterman(hspAlign)
         print ("# Best HSP:")
-        print (
-        "Id:", result.description, " Score brut:", selectedHsp.score, " Bitscore:", bitscore, " Evalue: ", eValue)
-        print(selectedHsp.hsp.hspString)
+        print ("Id:", result.description, " Score brut:", selectedHsp.score, " Bitscore:", bitscore, " Evalue: ", eValue)
         printAlignment(selectedHsp.hsp, result.seqDB)
-        # NOTE : Args all treated as string
-        # if args.i:
-        # .format(args.square, answer)
-        # print(args.accumulate(args.integers))
-
+    print ("Total : " +  str(len(selectedHspList)))
 if __name__ == "__main__":
     main()
