@@ -413,7 +413,7 @@ def printAlignment(result, selectedHsp, bitscore, eValue, dbSeqLength):
     seqHSP = hspAlignment.hspString
     posDB = hspAlignment.dbStart
     i=0
-    if seqDB[posDB+1] != seqHSP[i]:
+    if seqDB[posDB+1] != seqHSP[i] and seqDB[posDB]!=seqHSP[i]:
         if seqDB[posDB+1] == seqHSP[i+1] :
             # On doit shifter de 1 le HSP
             temp = ""
@@ -425,18 +425,19 @@ def printAlignment(result, selectedHsp, bitscore, eValue, dbSeqLength):
             hspAlignment.dbEnd+=1
             hspAlignment.seqStart+=2
             hspAlignment.seqEnd+=2
-        else:
-            #On coupe les deux, mismatch
-            selectedHsp.score += 4
-            bitscore = calcBitScore(selectedHsp.score)
-            eValue = calcEValue(len(seqHSP), dbSeqLength, bitscore)
-            hspAlignment.dbStart += 1
-            hspAlignment.seqStart += 1
-            temp = ""
-            for j in range(len(seqHSP)):
-                if j != 0:
-                    temp += seqHSP[j]
-            seqHSP = temp
+    elif seqDB[posDB] != seqHSP[i]:
+        #On coupe les deux, mismatch
+        selectedHsp.score += 4
+        bitscore = calcBitScore(selectedHsp.score)
+        eValue = calcEValue(len(seqHSP), dbSeqLength, bitscore)
+        hspAlignment.dbStart += 1
+        hspAlignment.seqStart += 2
+        hspAlignment.seqEnd += 1
+        temp = ""
+        for j in range(len(seqHSP)):
+            if j != 0:
+                temp += seqHSP[j]
+        seqHSP = temp
 
     posDB = hspAlignment.dbEnd
     if seqDB[posDB] != seqHSP[len(seqHSP)-1]:
