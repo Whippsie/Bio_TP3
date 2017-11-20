@@ -450,6 +450,33 @@ def fixEndIndices (str):
     return str
 #Code Alignement
 
+#Code found on Stackoverflow and modified to be of use here
+def quicksort(array):
+    less = []
+    equal = []
+    greater = []
+
+    if len(array) > 1:
+        pivot = array[0].selectedHsp.score
+        for x in array:
+            if x.selectedHsp.score < pivot:
+                less.append(x)
+            if x.selectedHsp.score == pivot:
+                equal.append(x)
+            if x.selectedHsp.score > pivot:
+                greater.append(x)
+
+        return quicksort(greater) + equal + quicksort(less)
+
+    else:
+        return array
+
+class Result:
+    def __init__(self, selectedHsp, seqDB, description):
+        self.selectedHsp = selectedHsp
+        self.seqDB = seqDB
+        self.description = description
+
 def main():
     # seed = makeSeed(k)
     # POUR TESTER UNIQUEMENT
@@ -465,6 +492,7 @@ def main():
     #for seqInput in seqSearch:
     #seqInput = "CGTAGTCGGCTAACGCATACGCTTGATAAGCGTAAGAGCCC"
     seqInput = "GAAAATCCTCGTGTCACCAGTTCAAATCTGGTTCCTGGCA"
+    selectedHspList = []
     for seqDB in seqSearchDB:
         if '>' in seqDB:
             temp = seqDB
@@ -476,21 +504,26 @@ def main():
         dbSeqLength = getLengthSeqDB(seqSearchDB)
         selectedHsp = filterHSP(hspMergedList, len(seqInput), dbSeqLength)
         if selectedHsp is not None:
-            bitscore = selectedHsp.bitscore
-            eValue = selectedHsp.eValue
-            hspAlign = alignment(seqInput, seqDB)
-            print (temp, " Score: ", hspAlign.score, " Ident: TODO")
-            printSmithWaterman(hspAlign)
-            print ("# Best HSP:")
-            print ("Id:", temp, " Score brut:", selectedHsp.score, " Bitscore:", bitscore, " Evalue: ", eValue)
-            print(selectedHsp.hsp.hspString)
-            printAlignment(selectedHsp.hsp, seqDB)
+            selectedHspList.append(Result(selectedHsp, seqDB, temp))
         args = makeParser()
 
         # NOTE : Args all treated as string
         # if args.i:
         # .format(args.square, answer)
         # print(args.accumulate(args.integers))
+
+    selectedHspList = quicksort(selectedHspList)
+    for result in selectedHspList:
+        selectedHsp = result.selectedHsp
+        bitscore = selectedHsp.bitscore
+        eValue = selectedHsp.eValue
+        hspAlign = alignment(seqInput, result.seqDB)
+        print (result.description, " Score: ", hspAlign.score, " Ident: TODO")
+        printSmithWaterman(hspAlign)
+        print ("# Best HSP:")
+        print ("Id:", result.description, " Score brut:", selectedHsp.score, " Bitscore:", bitscore, " Evalue: ", eValue)
+        print(selectedHsp.hsp.hspString)
+        printAlignment(selectedHsp.hsp, result.seqDB)
 
 if __name__ == "__main__":
     main()
