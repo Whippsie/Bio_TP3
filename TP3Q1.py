@@ -7,6 +7,7 @@ import time
 
 match, mismatch, indel = 1, -1, -1
 
+
 def fastaSequences(filename):
     sequences = []
     with open(filename, 'r') as f:
@@ -27,7 +28,7 @@ def buildKmer(k, inputUser):
                 temp += inputUser[i + j]
             # On ajoute chaque kmer individuellement
             if temp not in kmerList:
-                kmerList.append(Kmer(temp,i))
+                kmerList.append(Kmer(temp, i))
     return kmerList
 
 
@@ -45,9 +46,9 @@ def findHSP(kmerList, seqDB, seed):
     for kmerObj in kmerList:
         kmer = kmerObj.kmerString
         temp = ""
-        for i in range(len(seqDB)-len(kmer)):
+        for i in range(len(seqDB) - len(kmer)):
             j = 0
-            while (j < len(kmer)) and (seed[j] == "0" or seqDB[i+j] == kmer[j]):
+            while (j < len(kmer)) and (seed[j] == "0" or seqDB[i + j] == kmer[j]):
                 j += 1
             temp += seqDB[i]
             if j == len(kmer):
@@ -143,9 +144,6 @@ def merge(hspExtendedList, seqInput, seqDB):
         for j in range((i + 1), len(hspExtendedList)):
             hsp1 = hspExtendedList[i]
             hsp2 = hspExtendedList[j]
-
-            if hsp1.hspString == "GAAAATCCTCGTGTCACCA" and hsp2.hspString == "AGTTCAAATC":
-                print("stop")
             if mergeable(hsp1, hsp2):
                 newSeqStart = min([hsp1.seqStart, hsp2.seqStart])
                 newSeqEnd = max([hsp1.seqEnd, hsp2.seqEnd])
@@ -160,11 +158,14 @@ def merge(hspExtendedList, seqInput, seqDB):
                 i = i + 1
     return hspExtendedList
 
+
 def mergeable(hsp1, hsp2):
-    if (hsp1.dbStart <= hsp2.dbStart and hsp1.dbEnd >= hsp2.dbStart) or (hsp1.dbStart <= hsp2.dbEnd and hsp1.dbEnd >= hsp2.dbEnd):
+    if (hsp1.dbStart <= hsp2.dbStart and hsp1.dbEnd >= hsp2.dbStart) or (
+            hsp1.dbStart <= hsp2.dbEnd and hsp1.dbEnd >= hsp2.dbEnd):
         if (hsp1.seqStart - hsp2.seqStart) == (hsp1.dbStart - hsp2.dbStart):
             return True
     return False
+
 
 def calcHspBruteScore(hspString, seqDB, dbStart):
     newScore = 0
@@ -186,6 +187,7 @@ class Hsp:
         self.dbStart = dbStart
         self.dbEnd = dbEnd
         self.score = score
+
 
 class HspForFilter:
     def __init__(self, hsp, bitscore, eValue, score):
@@ -233,9 +235,8 @@ def getLengthSeqDB(seqSearchDB):
             lgt += len(seq)
     return lgt
 
-#Code Alignement
 
-
+# Code Alignement
 class HspAlignment:
     def __init__(self, seqInput, seqDB, score, inputStart, inputEnd, dbStart, dbEnd):
         self.seqInput = seqInput
@@ -253,7 +254,7 @@ def ident(seq1, seq2):
     for i in range(0, len(seq1)):
         if seq1[i] == seq2[i]:
             sim += 1
-    return sim/len(seq1)
+    return sim / len(seq1)
 
 
 def alignment(seq1, seq2):
@@ -281,7 +282,7 @@ def createMatrix(seq1, seq2):
     return scoreMatrix, directionMatrix
 
 
-def solveMatrix (matrix, directionMatrix, seq1, seq2):
+def solveMatrix(matrix, directionMatrix, seq1, seq2):
     rows = len(seq1) + 1
     columns = len(seq2) + 1
     maxScore = 0
@@ -298,22 +299,23 @@ def solveMatrix (matrix, directionMatrix, seq1, seq2):
 
     return matrix, directionMatrix, maxPos, maxScore
 
-def evalScore (matrix, i, j, seq1, seq2):
+
+def evalScore(matrix, i, j, seq1, seq2):
     if seq1[i - 1] == seq2[j - 1]:
         diag = matrix[i - 1][j - 1] + match
     else:
         diag = matrix[i - 1][j - 1] + mismatch
 
-    up = matrix[i-1][j] + indel
-    left = matrix[i][j-1] + indel
+    up = matrix[i - 1][j] + indel
+    left = matrix[i][j - 1] + indel
 
     score = max(0, diag, up, left)
 
-    #Directions:
-    #0 = fin
-    #1 = diagonale
-    #2 = haut
-    #3 = gauche
+    # Directions:
+    # 0 = fin
+    # 1 = diagonale
+    # 2 = haut
+    # 3 = gauche
     dir = 0
     if diag == score:
         dir = 1
@@ -323,12 +325,13 @@ def evalScore (matrix, i, j, seq1, seq2):
         dir = 3
     return score, dir
 
+
 def printMatrix(matrix):
     print('\n'.join([''.join(['{:4}'.format(item) for item in row])
                      for row in matrix]))
 
 
-def traceback (directions, seq1, seq2, start, score):
+def traceback(directions, seq1, seq2, start, score):
     i, j = start
     inputEnd = i - 1
     dbEnd = j - 1
@@ -338,22 +341,22 @@ def traceback (directions, seq1, seq2, start, score):
 
     while trace != 0:
         if trace == 1:
-            seq1Aligned.append(seq1[i-1])
-            seq2Aligned.append(seq2[j-1])
+            seq1Aligned.append(seq1[i - 1])
+            seq2Aligned.append(seq2[j - 1])
             i -= 1
             j -= 1
         elif trace == 2:
-            seq1Aligned.append(seq1[i-1])
+            seq1Aligned.append(seq1[i - 1])
             seq2Aligned.append('-')
             i -= 1
         else:
-            seq2Aligned.append(seq2[j-1])
+            seq2Aligned.append(seq2[j - 1])
             seq1Aligned.append('-')
             j -= 1
 
         trace = directions[i][j]
 
-    if (i-1) >= 0 and (j-1) >= 0:
+    if (i - 1) >= 0 and (j - 1) >= 0:
         seq1Aligned.append(seq1[i - 1])
         inputStart = i - 1
         seq2Aligned.append(seq2[j - 1])
@@ -397,13 +400,13 @@ def quicksort(array):
 
 
 class Result:
-     def __init__(self, selectedHsp, seqDB, description):
-         self.selectedHsp = selectedHsp
-         self.seqDB = seqDB
-         self.description = description
+    def __init__(self, selectedHsp, seqDB, description):
+        self.selectedHsp = selectedHsp
+        self.seqDB = seqDB
+        self.description = description
 
 
-def printAlignment (hspAlignment, seqDB):
+def printAlignment(hspAlignment, seqDB):
     dbStart = fixStartIndices(str(hspAlignment.dbStart))
     dbEnd = fixEndIndices(str(hspAlignment.dbEnd))
     inputStart = fixStartIndices(str(hspAlignment.seqStart))
@@ -411,17 +414,17 @@ def printAlignment (hspAlignment, seqDB):
 
     print ("Alignement:")
     print (inputStart + hspAlignment.hspString + inputEnd)
-    print (dbStart + seqDB[hspAlignment.dbStart:(hspAlignment.dbEnd+1)] + dbEnd)
+    print (dbStart + seqDB[hspAlignment.dbStart:(hspAlignment.dbEnd + 1)] + dbEnd)
     print ("---------------------------------------------")
 
 
-def fixStartIndices (str):
+def fixStartIndices(str):
     while len(str) < 3:
         str += " "
     return str
 
 
-def fixEndIndices (str):
+def fixEndIndices(str):
     while len(str) < 3:
         str = " " + str
     return str
@@ -441,7 +444,7 @@ def main():
         test = 0
         temp = ""
         for c in seqInput:
-            if test != 0 and test != len(seqInput)-1:
+            if test != 0 and test != len(seqInput) - 1:
                 temp += c
             test += 1
     else:
@@ -470,12 +473,6 @@ def main():
     else:
         seed = "11111111111"
 
-    #seqSearch = fastaSequences("unknown.fasta")
-    #seqInput = seqSearch[0]
-    seqSearchDB = fastaSequences("tRNAs.fasta")
-    #seqDB = seqSearchDB[0]
-
-    seed = "1111111111111111111111"
     selectedHspList = []
     kmerList = buildKmer(len(seed), seqInput)
     temp = ""
@@ -495,14 +492,17 @@ def main():
         selectedHsp = result.selectedHsp
         bitscore = selectedHsp.bitscore
         eValue = selectedHsp.eValue
-        hspAlign = alignment(seqInput, result.seqDB)
-        print (result.description + " Score: " + str(hspAlign.score) + " Ident: " + str(hspAlign.ident))
-        printSmithWaterman(hspAlign)
+        seqAlign = alignment(seqInput, result.seqDB)
+        print (result.description + " Score: " + str(seqAlign.score) + " Ident: " + str(seqAlign.ident))
+        printSmithWaterman(seqAlign)
         print ("# Best HSP:")
-        print ("Id:" + result.description + " Score brut:" + str(selectedHsp.score) + " Bitscore:" + str(bitscore) + " Evalue: " + str(eValue))
+        print ("Id:" + result.description + " Score brut:" + str(selectedHsp.score) + " Bitscore:" + str(
+            bitscore) + " Evalue: " + str(eValue))
         printAlignment(selectedHsp.hsp, result.seqDB)
-    print ("Total : " +  str(len(selectedHspList)))
+    print ("Total : " + str(len(selectedHspList)))
     end = time.clock()
-    print ("Time elapsed", end-first)
+    print ("Time elapsed", end - first)
+
+
 if __name__ == "__main__":
     main()
