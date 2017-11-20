@@ -4,8 +4,8 @@
 import argparse
 import math
 
-seuil = 5
-seuilCutoff = 10
+seuil = 12
+seuilCutoff = 0.1
 match, mismatch, indel = 1, -1, -1
 
 
@@ -188,14 +188,6 @@ def extendGlouton(hspList, seqDB, seq, hspPos):
         temp = Hsp(lastHSP, pos, pos + len(currentHSP) - 1, posDB, posDB + len(currentHSP) - 1, lastScore)
         hspExtendedList.append(temp)
         i += 1
-    j = 0
-    for hsp in hspList:
-        print ("hsp original ", j, " ", hsp.kmerString)
-        j += 1
-    j = 0
-    for hsp in hspExtendedList:
-        print ("hspExtended:", j, " ", hsp.hspString)
-        j += 1
     return hspExtendedList
 
 
@@ -461,7 +453,7 @@ def fixEndIndices (str):
 def main():
     # seed = makeSeed(k)
     # POUR TESTER UNIQUEMENT
-    seed = "11111111111"
+    seed = "110011"
     #POUR TESTER UNIQUEMENT
     k = len(seed)
     seqSearch = fastaSequences("unknown.fasta")
@@ -472,7 +464,7 @@ def main():
 
     #for seqInput in seqSearch:
     #seqInput = "CGTAGTCGGCTAACGCATACGCTTGATAAGCGTAAGAGCCC"
-    seqInput = "CGTAGTCGGCTAACGCATACGCTTGATAAGCGTAAGAGCCC"
+    seqInput = "GAAAATCCTCGTGTCACCAGTTCAAATCTGGTTCCTGGCA"
     for seqDB in seqSearchDB:
         if '>' in seqDB:
             temp = seqDB
