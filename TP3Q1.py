@@ -441,15 +441,21 @@ def main():
     parser.add_argument('-ss', help='SS')
     parser.add_argument('-seed', '--seed', help='Graine 1 pour présent, 0 pour no care')
     args = parser.parse_args()
-    seqInput = args.i
-    test = 0
-    temp = ""
-    for c in seqInput:
-        if test != 0 and test != len(seqInput)-1:
-            temp += c
-        test += 1
+    if args.i:
+        seqInput = args.i
+        test = 0
+        temp = ""
+        for c in seqInput:
+            if test != 0 and test != len(seqInput)-1:
+                temp += c
+            test += 1
+    else:
+        return None
     seqInput = temp
-    seqSearchDB = fastaSequences(args.db)
+    if args.db:
+        seqSearchDB = fastaSequences(args.db)
+    else:
+        return None
     if args.E:
         seuil = float(args.E)
     else:
