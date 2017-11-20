@@ -62,60 +62,15 @@ def findHSP(kmerList, seqDB, seed):
     # Pour chaque sous-mot
     for kmerObj in kmerList:
         kmer = kmerObj.kmerString
+        temp = ""
         for i in range(len(seqDB)-len(kmer)):
             j = 0
-            while j < len(kmer) and (seed[j] == 0 or seqDB[i+j] == kmer[j]):
+            while (j < len(kmer)) and (seed[j] == "0" or seqDB[i+j] == kmer[j]):
                 j += 1
+            temp += seqDB[i]
             if j == len(kmer):
                 hspList.append(kmerObj)
                 hspPosDB.append(i)
-                """
-        compteurGlobal = 0
-        compteurPos = 0
-        # On loop sur la longueur de la sequence
-        compteurSeqDB = 0
-        while compteurGlobal < len(seqDB):
-            if seed[compteurPos] == "1":
-                # Si le caractere est le meme dans le sous mot et la sequence
-                if kmer[compteurPos] == seqDB[compteurSeqDB]:
-                    if compteurPos == len(kmer) - 1:
-                        # On a un mot!
-                        hspList.append(kmerObj)
-                        hspPosDB.append(compteurSeqDB - len(kmer) + 1)
-                        if compteurSeqDB == (len(seqDB) - 1):
-                            compteurSeqDB += 1
-                        else:
-                            temp = (compteurSeqDB - compteurPos) + 1
-                            if temp == (compteurSeqDB - len(kmer)) + 1:
-                                compteurSeqDB = temp + 1
-                            else:
-                                compteurSeqDB = temp
-                            compteurPos = 0
-                            # On continue d'incrementer dans le sous mot
-                    else:
-                        compteurPos += 1
-                        compteurSeqDB += 1
-                # Sinon, on verifie le premier caractere pour repartir une sous boucle
-                else:
-                    if compteurPos > 0:
-                        if compteurSeqDB == (len(seqDB) - 1):
-                            compteurSeqDB += 1
-                        else:
-                            if compteurPos > 1:
-                                temp = (compteurSeqDB - compteurPos) + 1
-                                if temp == (compteurSeqDB - len(kmer)) + 1:
-                                    compteurSeqDB = temp + 1
-                                else:
-                                    compteurSeqDB = temp
-                            compteurPos = 0
-                    else:
-                        compteurSeqDB += 1
-            else:
-                # On a un zero, free pass
-                compteurPos += 1
-                compteurSeqDB += 1"""
-    # print("hspList:", hspList)
-    # print("hspPos in DB seq:", hspPosDB)
     return hspList, hspPosDB
 
 
@@ -136,7 +91,6 @@ def extendGlouton(hspList, seqDB, seq, hspPos):
         pos = hspObj.seqStart
         while not bellowSeuil(maxScore, currentScore) and not isEnd(currentHSP, seq, seqDB):
             bothSidesString = currentHSP
-            # print("pos:", pos," posDB:", posDB)
             if pos > 0 and posDB > 0:
                 bothSidesString = seq[pos - 1] + currentHSP
                 tempChar = seq[pos - 1]
@@ -425,6 +379,34 @@ def printSmithWaterman(hspAlignment):
     print (hspAlignment.seqInput)
     print (" ")
 
+#Code found on Stackoverflow and modified to be of use here
+def quicksort(array):
+    less = []
+    equal = []
+    greater = []
+
+    if len(array) > 1:
+        pivot = array[0].selectedHsp.score
+        for x in array:
+            if x.selectedHsp.score < pivot:
+                less.append(x)
+            if x.selectedHsp.score == pivot:
+                equal.append(x)
+            if x.selectedHsp.score > pivot:
+                greater.append(x)
+
+        return quicksort(greater) + equal + quicksort(less)
+    else:
+        return array
+
+
+class Result:
+     def __init__(self, selectedHsp, seqDB, description):
+         self.selectedHsp = selectedHsp
+         self.seqDB = seqDB
+         self.description = description
+
+
 def printAlignment (hspAlignment, seqDB):
     dbStart = fixStartIndices(str(hspAlignment.dbStart))
     dbEnd = fixEndIndices(str(hspAlignment.dbEnd))
@@ -450,33 +432,6 @@ def fixEndIndices (str):
     return str
 #Code Alignement
 
-#Code found on Stackoverflow and modified to be of use here
-def quicksort(array):
-    less = []
-    equal = []
-    greater = []
-
-    if len(array) > 1:
-        pivot = array[0].selectedHsp.score
-        for x in array:
-            if x.selectedHsp.score < pivot:
-                less.append(x)
-            if x.selectedHsp.score == pivot:
-                equal.append(x)
-            if x.selectedHsp.score > pivot:
-                greater.append(x)
-
-        return quicksort(greater) + equal + quicksort(less)
-
-    else:
-        return array
-
-class Result:
-    def __init__(self, selectedHsp, seqDB, description):
-        self.selectedHsp = selectedHsp
-        self.seqDB = seqDB
-        self.description = description
-
 def main():
     # seed = makeSeed(k)
     # POUR TESTER UNIQUEMENT
@@ -493,11 +448,11 @@ def main():
     #seqInput = "CGTAGTCGGCTAACGCATACGCTTGATAAGCGTAAGAGCCC"
     seqInput = "GAAAATCCTCGTGTCACCAGTTCAAATCTGGTTCCTGGCA"
     selectedHspList = []
+    kmerList = buildKmer(k, seqInput)
     for seqDB in seqSearchDB:
         if '>' in seqDB:
             temp = seqDB
             continue
-        kmerList = buildKmer(k, seqInput)
         hspList, hspPos = findHSP(kmerList, seqDB, seed)
         hspExtendedList = extendGlouton(hspList, seqDB, seqInput, hspPos)
         hspMergedList = merge(hspExtendedList, seqInput, seqDB)
@@ -506,12 +461,6 @@ def main():
         if selectedHsp is not None:
             selectedHspList.append(Result(selectedHsp, seqDB, temp))
         args = makeParser()
-
-        # NOTE : Args all treated as string
-        # if args.i:
-        # .format(args.square, answer)
-        # print(args.accumulate(args.integers))
-
     selectedHspList = quicksort(selectedHspList)
     for result in selectedHspList:
         selectedHsp = result.selectedHsp
@@ -521,9 +470,14 @@ def main():
         print (result.description, " Score: ", hspAlign.score, " Ident: TODO")
         printSmithWaterman(hspAlign)
         print ("# Best HSP:")
-        print ("Id:", result.description, " Score brut:", selectedHsp.score, " Bitscore:", bitscore, " Evalue: ", eValue)
+        print (
+        "Id:", result.description, " Score brut:", selectedHsp.score, " Bitscore:", bitscore, " Evalue: ", eValue)
         print(selectedHsp.hsp.hspString)
         printAlignment(selectedHsp.hsp, result.seqDB)
+        # NOTE : Args all treated as string
+        # if args.i:
+        # .format(args.square, answer)
+        # print(args.accumulate(args.integers))
 
 if __name__ == "__main__":
     main()
