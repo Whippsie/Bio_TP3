@@ -258,7 +258,14 @@ class HspAlignment:
         self.inputEnd = inputEnd
         self.dbStart = dbStart
         self.dbEnd = dbEnd
+        self.ident = ident(seqInput, seqDB)
 
+def ident(seq1, seq2):
+    sim = float(0)
+    for i in range(0, len(seq1)):
+        if seq1[i] == seq2[i]:
+            sim += 1
+    return sim/len(seq1)
 
 def alignment(seq1, seq2):
     matrix, directions = createMatrix(seq1, seq2)
@@ -467,7 +474,7 @@ def main():
         bitscore = selectedHsp.bitscore
         eValue = selectedHsp.eValue
         hspAlign = alignment(seqInput, result.seqDB)
-        print (result.description, " Score: ", hspAlign.score, " Ident: TODO")
+        print (result.description, " Score: ", hspAlign.score, " Ident: ", hspAlign.ident)
         printSmithWaterman(hspAlign)
         print ("# Best HSP:")
         print (
