@@ -3,6 +3,7 @@
 
 import argparse
 import math
+import time
 
 match, mismatch, indel = 1, -1, -1
 
@@ -35,13 +36,6 @@ class Kmer:
         self.kmerString = kmerString
         self.seqStart = seqStart
         self.seqEnd = seqStart + len(kmerString)
-
-
-def makeSeed(k):
-    temp = ""
-    for i in range(k):
-        temp += "1"
-    return temp
 
 
 def findHSP(kmerList, seqDB, seed):
@@ -434,6 +428,7 @@ def fixEndIndices (str):
 
 
 def main():
+    first = time.clock()
     parser = argparse.ArgumentParser(description='TP3_Bio')
     parser.add_argument('-i', help='Sequence ')
     parser.add_argument('-db', help='Base de donnees')
@@ -473,13 +468,14 @@ def main():
             test += 1
         seed = temp
     else:
-        seed = makeSeed(11)
+        seed = "11111111111"
 
     #seqSearch = fastaSequences("unknown.fasta")
     #seqInput = seqSearch[0]
-    #seqSearchDB = fastaSequences("tRNAs.fasta")
+    seqSearchDB = fastaSequences("tRNAs.fasta")
     #seqDB = seqSearchDB[0]
 
+    seed = "1111111111111111111111"
     selectedHspList = []
     kmerList = buildKmer(len(seed), seqInput)
     temp = ""
@@ -500,11 +496,13 @@ def main():
         bitscore = selectedHsp.bitscore
         eValue = selectedHsp.eValue
         hspAlign = alignment(seqInput, result.seqDB)
-        print (result.description, " Score: ", hspAlign.score, " Ident: ", hspAlign.ident)
+        print (result.description + " Score: " + str(hspAlign.score) + " Ident: " + str(hspAlign.ident))
         printSmithWaterman(hspAlign)
         print ("# Best HSP:")
-        print ("Id:", result.description, " Score brut:", selectedHsp.score, " Bitscore:", bitscore, " Evalue: ", eValue)
+        print ("Id:" + result.description + " Score brut:" + str(selectedHsp.score) + " Bitscore:" + str(bitscore) + " Evalue: " + str(eValue))
         printAlignment(selectedHsp.hsp, result.seqDB)
     print ("Total : " +  str(len(selectedHspList)))
+    end = time.clock()
+    print ("Time elapsed", end-first)
 if __name__ == "__main__":
     main()
