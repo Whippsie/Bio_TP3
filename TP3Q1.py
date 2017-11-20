@@ -144,6 +144,7 @@ def merge(hspExtendedList, seqInput, seqDB):
         for j in range((i + 1), len(hspExtendedList)):
             hsp1 = hspExtendedList[i]
             hsp2 = hspExtendedList[j]
+
             if mergeable(hsp1, hsp2):
                 newSeqStart = min([hsp1.seqStart, hsp2.seqStart])
                 newSeqEnd = max([hsp1.seqEnd, hsp2.seqEnd])
@@ -406,14 +407,55 @@ class Result:
         self.description = description
 
 
-def printAlignment(hspAlignment, seqDB):
+def printAlignment(result, selectedHsp, bitscore, eValue, dbSeqLength):
+    seqDB = result.seqDB
+    hspAlignment = selectedHsp.hsp
+    seqHSP = hspAlignment.hspString
+    posDB = hspAlignment.dbStart
+    i=0
+    if seqDB[posDB+1] != seqHSP[i]:
+        if seqDB[posDB+1] == seqHSP[i+1] :
+            # On doit shifter de 1 le HSP
+            temp = ""
+            for j in range(len(seqHSP)):
+                if j != 0:
+                    temp += seqHSP[j]
+            seqHSP = temp
+            hspAlignment.dbStart+=1
+            hspAlignment.dbEnd+=1
+            hspAlignment.seqStart+=2
+            hspAlignment.seqEnd+=2
+        else:
+            #On coupe les deux, mismatch
+            selectedHsp.score += 4
+            bitscore = calcBitScore(selectedHsp.score)
+            eValue = calcEValue(len(seqHSP), dbSeqLength, bitscore)
+            hspAlignment.dbStart += 1
+            hspAlignment.seqStart += 1
+            temp = ""
+            for j in range(len(seqHSP)):
+                if j != 0:
+                    temp += seqHSP[j]
+            seqHSP = temp
+
+    posDB = hspAlignment.dbEnd
+    if seqDB[posDB] != seqHSP[len(seqHSP)-1]:
+        #On a un mismatch à la fin
+        selectedHsp.score += 4
+        bitscore = calcBitScore(selectedHsp.score)
+        eValue = calcEValue(len(seqHSP), dbSeqLength, bitscore)
+        hspAlignment.dbEnd -= 1
+        hspAlignment.seqEnd -= 1
+
+    print ("# Best HSP:")
+    print ("Id:" + result.description + " Score brut:" + str(selectedHsp.score) + " Bitscore:" + str(
+        bitscore) + " Evalue: " + str(eValue))
     dbStart = fixStartIndices(str(hspAlignment.dbStart))
     dbEnd = fixEndIndices(str(hspAlignment.dbEnd))
     inputStart = fixStartIndices(str(hspAlignment.seqStart))
     inputEnd = fixEndIndices(str(hspAlignment.seqEnd))
-
     print ("Alignement:")
-    print (inputStart + hspAlignment.hspString + inputEnd)
+    print (inputStart + seqHSP + inputEnd)
     print (dbStart + seqDB[hspAlignment.dbStart:(hspAlignment.dbEnd + 1)] + dbEnd)
     print ("---------------------------------------------")
 
@@ -496,13 +538,11 @@ def main():
         seqAlign = alignment(seqInput, result.seqDB)
         print (result.description + " Score: " + str(seqAlign.score) + " Ident: " + str(seqAlign.ident))
         printSmithWaterman(seqAlign)
-        print ("# Best HSP:")
-        print ("Id:" + result.description + " Score brut:" + str(selectedHsp.score) + " Bitscore:" + str(
-            bitscore) + " Evalue: " + str(eValue))
-        printAlignment(selectedHsp.hsp, result.seqDB)
+        printAlignment(result, selectedHsp, bitscore, eValue, dbSeqLength)
     print ("Total : " + str(len(selectedHspList)))
     end = time.clock()
     print ("Time elapsed", end - first)
+
 
 
 if __name__ == "__main__":
