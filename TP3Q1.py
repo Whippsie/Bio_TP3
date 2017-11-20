@@ -488,6 +488,7 @@ def main():
         if selectedHsp is not None:
             selectedHspList.append(Result(selectedHsp, seqDB, temp))
     selectedHspList = quicksort(selectedHspList)
+
     for result in selectedHspList:
         selectedHsp = result.selectedHsp
         bitscore = selectedHsp.bitscore
